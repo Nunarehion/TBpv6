@@ -23,6 +23,13 @@ async def upsert_data(data):
     return result
 
 
+async def add_images_to_message(message_name: str, image_urls: list[str]):
+    collection = await read_data("message")
+    await collection.update_one(
+        {"name": message_name},
+        {"$set": {"images": image_urls}}
+    )
+
 async def read_data(collection_name):
     return db[collection_name]
 
