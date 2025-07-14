@@ -1,0 +1,9 @@
+aiogram
+pydantic
+pydantic_settings
+logging
+
+redis
+aioredis
+setuptools
+motor
