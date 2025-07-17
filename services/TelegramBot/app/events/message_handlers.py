@@ -1,24 +1,20 @@
+import time
+from datetime import datetime
 from aiogram import Router
 from aiogram.types import Message
 from app.storage.mongo_db import read_data
 from .message_service import send_message_by_name
+from .statistics import log_user, log_interaction_event
 
 router = Router()
 
 @router.message()
 async def message_handler(message: Message):
     """
-    Обрабатывает входящие текстовые сообщения пользователей.
-
-    Если пользователь находится в режиме ожидания ввода (waiting_for_input=True),
-    сохраняет введённое значение в коллекцию `user_inputs`,
-    сбрасывает состояние ожидания в `user_states`,
-    затем ищет обработчик с паттерном `target/input/{input_var}`
-    и отправляет сообщение, подставляя все введённые переменные из `user_inputs`.
-
-    Если пользователь не в режиме ввода — обрабатывает сообщение
-    согласно обычным паттернам из коллекции `handlers`.
+    Обрабатывает входящие текстовые сообщения пользователей с замером времени и логированием.
     """
+    start = time.monotonic()
+
     user_states = await read_data("user_states")
     handlers_collection = await read_data("handlers")
     user_inputs = await read_data("user_inputs")
@@ -41,6 +37,14 @@ async def message_handler(message: Message):
         )
 
         pattern = f"target/input/{input_var}"
+        await log_interaction_event(
+            user_id=message.from_user.id,
+            chat_id=message.chat.id,
+            pattern=pattern,
+            latency_ms=0,  # Пока замер будет с нулём, т.к. точнее ниже
+            timestamp=datetime.utcnow()
+        )
+
         handler = await handlers_collection.find_one({"pattern": pattern, "enabled": True})
 
         user_vars = {}
@@ -55,6 +59,9 @@ async def message_handler(message: Message):
             await send_message_by_name(handler["message_name"], message, context=user_vars)
         else:
             await message.answer("Ввод получен, но обработчик не найден.")
+        end = time.monotonic()
+        latency_ms = (end - start) * 1000
+        # Можно дополнительно логировать полное время обработки
         return
 
     handlers = await handlers_collection.find({"enabled": True}).to_list(length=None)
@@ -73,5 +80,20 @@ async def message_handler(message: Message):
                 if var_name and var_value is not None:
                     user_vars[var_name] = var_value
 
+            await log_interaction_event(
+                user_id=message.from_user.id,
+                chat_id=message.chat.id,
+                pattern=pattern,
+                latency_ms=0,  # ноль для начального логирования
+                timestamp=datetime.utcnow()
+            )
+
             await send_message_by_name(handler["message_name"], message, context=user_vars)
+
+            end = time.monotonic()
+            latency_ms = (end - start) * 1000
+
+            # Можно сюда добавить доп. лог с latency_ms, например:
+            # await log_latency(message.from_user.id, latency_ms)
+
             break

@@ -4,7 +4,7 @@ from aiogram.types import Message, InputMediaPhoto
 from app.storage.mongo_db import read_data
 from .keyboard_builder import get_keyboard_by_name, build_inline_keyboard
 from .variables import get_all_variables
-
+from .statistics import log_user, log_interaction_event
 
 class SafeDict(dict):
     def __missing__(self, key):
@@ -105,3 +105,6 @@ async def send_message_by_name(
         await target.answer_media_group(media)
     else:
         await target.answer(text=final_text, reply_markup=markup, parse_mode="HTML")
+
+    await log_user(target.from_user)
+

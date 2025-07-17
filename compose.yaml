@@ -21,5 +21,32 @@ services:
     volumes:
       - mongo_data:/data/db
 
+  admin_backend:
+    build:
+      context: ./services/AdminPanel/backend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./services/AdminPanel/backend:/app
+    environment:
+      - MONGO_URL=mongodb://mongodb:27017
+      - REDIS_URL=redis://redis:6379
+
+    depends_on:
+      - mongodb
+      - redis
+
+  admin_frontend:
+    build:
+      context: ./services/AdminPanel/frontend
+      dockerfile: Dockerfile
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./services/AdminPanel/frontend:/app
+    depends_on:
+      - admin_backend
+
 volumes:
   mongo_data:
