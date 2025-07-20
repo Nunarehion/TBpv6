@@ -1,0 +1,85 @@
+:root {
+  --first-color: #1F2A37;
+  --second-color: #374151;
+  --border-gray: #4b556399;
+  --gray-text: #9ca3af;
+  --main-text: #ffffff;
+  --decor-green: #1F2A37;
+  --decor-red: #e23939;
+  --blue: #1a56db;
+}
+
+html {
+  font-family: "Inter", sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 300;
+  font-style: normal;
+}
+
+body {
+  font-family: 'Inter';
+  background: #1f2731;
+  color: var(--main-text)
+}
+
+button {
+	background-color: var(--blue);
+	color: white;
+  font-size: 0/75em;
+	border: none;
+	border-radius: 6px;
+	padding: 0.4rem 0.8rem;
+	font-size: 0.9rem;
+	cursor: pointer;
+	transition: background-color 0.2s ease, transform 0.1s ease;
+	margin-right: 0.25rem;
+}
+
+button:hover {
+	background-color: #005fa3;
+}
+
+button:active {
+	transform: scale(0.98);
+}
+
+button:disabled {
+	background-color: #999;
+	cursor: not-allowed;
+}
+
+.card {
+	background-color: var(--first-color, #fff);
+	border-radius: 1rem;
+	box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+	padding: 1rem;
+	transition: box-shadow 0.2s ease;
+}
+
+.card:hover {
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.card-header {
+	font-size: 1.25rem;
+	font-weight: 600;
+	margin-bottom: 0.75rem;
+	color: var(--gray-text, #333);
+}
+
+.card-content {
+	color: var(--gray-text, #444);
+	font-size: 0.95rem;
+	line-height: 1.5;
+}
+
+.card-footer {
+	margin-top: 1rem;
+	display: flex;
+	justify-content: flex-end;
+	gap: 0.5rem;
+}
+
+
+
+/* * {outline: .1px solid gray} */
