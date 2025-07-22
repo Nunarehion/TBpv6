@@ -53,15 +53,25 @@
 
 <div class="table-cell">
 	{#if editingId === doc._id}
-		<button on:click={saveEdit}>💾 Сохранить</button>
-		<button on:click={cancelEdit}>❌ Отмена</button>
+		<button on:click={saveEdit} aria-label="Сохранить">
+			<svg class="icon"><use href="/sprite.svg#floppy-disk"></use></svg>
+		</button>
+		<button on:click={cancelEdit} aria-label="Отмена"
+			><svg class="icon"><use href="/sprite.svg#close-circle"></use></svg>
+		</button>
 	{:else}
-		<button on:click={startEdit}>✏️ Редактировать</button>
+		<button on:click={startEdit} aria-label="Редактирование">
+			<svg class="icon">
+				<use href="/sprite.svg#pen"></use>
+			</svg>
+		</button>
 	{/if}
 </div>
 
 <style>
 	.table-cell {
+		display: flex;
+		align-items: center;
 		padding: 0.5rem 0;
 		border-bottom: 2px solid #9ca3af33;
 		color: var(--gray-text);
@@ -74,6 +84,9 @@
 		border-radius: 4px;
 	}
 	button {
+		display: flex;
+		align-items: center;
+		justify-content: center;
 		background-color: #007acc;
 		color: white;
 		border: none;
@@ -90,7 +103,8 @@
 		cursor: not-allowed;
 	}
 
-	.white-text {
-		color: white;
+	.icon {
+		width: 1.5rem;
+		aspect-ratio: 1/1;
 	}
 </style>

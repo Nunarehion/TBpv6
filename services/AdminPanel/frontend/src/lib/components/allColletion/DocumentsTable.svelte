@@ -82,11 +82,11 @@
 	}
 
 	.tabel-wrap {
-		margin: 2rem;
 		background: var(--first-color);
 		overflow: hidden;
 		border-radius: 1rem 1rem 0 0;
 		box-shadow: 0 0 2px #00000022;
+		border: 1px solid var(--border-gray);
 	}
 	.tools-panel {
 		height: 5rem;

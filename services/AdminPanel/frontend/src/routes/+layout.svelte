@@ -12,8 +12,16 @@
 	import SideBar from '$lib/components/SideBar.svelte';
 	let name = 'world';
 	let config = [
-		{ header: 'Home', link: '', items: [1, 2, 3, 4] },
-		{ header: 'About', link: '', items: [1, 2, 3, 4] }
+		{
+			header: 'Конструктор',
+			icon: 'database',
+			items: [
+				{ text: 'Сообщения', link: '/messages' },
+				{ text: 'Кнопки', link: 'buttons' },
+				{ text: 'Тригеры', link: 'trigers' }
+			]
+		},
+		{ header: 'About', link: '', items: [2, 3, 4] }
 	];
 </script>
 
@@ -21,6 +29,7 @@
 	<nav>
 		<a href="/all">все</a>
 		<a href="/messages">сообщения</a>
+		<a href="/icones">иконки</a>
 	</nav>
 
 	<SideBar {config} />
@@ -55,6 +64,6 @@
 	.window {
 		padding: 2rem;
 		background-color: #1e2630;
-		border: 1px solid var(--border-gray)
+		border: 1px solid var(--border-gray);
 	}
 </style>

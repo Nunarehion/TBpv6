@@ -30,24 +30,55 @@
 </script>
 
 {#if selectedCollection}
-	<div style="margin-bottom: 1rem;">
-		<button on:click={() => toggleView('cards')} disabled={viewMode === 'cards'}> Карточки </button>
-		<button on:click={() => toggleView('table')} disabled={viewMode === 'table'}> Таблица </button>
-	</div>
-
-	{#if loading}
-		<p>Загрузка документов...</p>
-	{:else if documents.length === 0}
-		<p>Документы отсутствуют</p>
-	{:else if viewMode === 'cards'}
-		<div
-			style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1rem;"
-		>
-			{#each documents as doc (doc._id)}
-				<DocumentCard {doc} on:save={(e) => handleSave(e.detail)} />
-			{/each}
+	<div class="wrap">
+		<div class="tabs-panel" style="margin-bottom: 1rem;">
+			<button on:click={() => toggleView('cards')} disabled={viewMode === 'cards'}>
+				<svg class="icon"><use href="/sprite.svg#objects-column"></use></svg>
+				Карточки
+			</button>
+			<button on:click={() => toggleView('table')} disabled={viewMode === 'table'}>
+				<svg class="icon"><use href="/sprite.svg#column"></use></svg>
+				Таблица
+			</button>
 		</div>
-	{:else if viewMode === 'table'}
-		<DocumentsTable {documents} {orderedFields} on:save={(e) => handleSave(e.detail)} />
-	{/if}
+
+		{#if loading}
+			<p>Загрузка документов...</p>
+		{:else if documents.length === 0}
+			<p>Документы отсутствуют</p>
+		{:else if viewMode === 'cards'}
+			<div
+				style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1rem;"
+			>
+				{#each documents as doc (doc._id)}
+					<DocumentCard {doc} on:save={(e) => handleSave(e.detail)} />
+				{/each}
+			</div>
+		{:else if viewMode === 'table'}
+			<DocumentsTable {documents} {orderedFields} on:save={(e) => handleSave(e.detail)} />
+		{/if}
+	</div>
 {/if}
+
+<style>
+	.wrap {
+		display: grid;
+		padding: 2rem;
+	}
+	.tabs-panel {
+		margin-left: auto;
+	}
+	.icon {
+		width: 4rem;
+		aspect-ratio: 1/1;
+	}
+	button:disabled {
+		background: red;
+		transform: scale(0.9);
+	}
+	button {
+	}
+	* {
+		/* outline: 1px solid white; */
+	}
+</style>
