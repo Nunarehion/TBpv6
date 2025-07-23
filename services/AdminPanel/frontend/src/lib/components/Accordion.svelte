@@ -59,8 +59,8 @@
 		height: fit-content;
 	}
 	div.icon {
-		height: 1.5rem;
-		aspect-ratio: 1/1;
+		flex: 0 0 24px;
+		height: 24px;
 	}
 	div.text {
 		margin-left: 0.5rem;
