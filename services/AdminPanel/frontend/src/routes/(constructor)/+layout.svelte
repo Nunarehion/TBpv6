@@ -1,5 +1,7 @@
-<script>
+<!-- <script>
 	import DocumentPreview from '$lib/components/DocumentPreview.svelte';
+
+	import { onMount } from 'svelte';
 	import {
 		documents,
 		loadingDocuments,
@@ -8,9 +10,6 @@
 		addDocument,
 		deleteDocument
 	} from '$lib/stores/db.js';
-	import { onMount } from 'svelte';
-
-	const collectionName = 'message';
 
 	onMount(() => {
 		loadDocuments(collectionName);
@@ -27,15 +26,4 @@
 	async function handleDelete(doc) {
 		await deleteDocument(collectionName, doc._id);
 	}
-</script>
-
-<h1>Сообщения</h1>
-
-<DocumentPreview
-	documents={$documents}
-	loading={$loadingDocuments}
-	selectedCollection={collectionName}
-	on:save={(e) => handleSave(e.detail)}
-	on:add={(e) => handleAdd(e.detail)}
-	on:delete={(e) => handleDelete(e.detail)}
-/>
+</script> -->

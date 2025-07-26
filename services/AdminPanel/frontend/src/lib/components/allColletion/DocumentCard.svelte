@@ -67,25 +67,6 @@
 		margin-top: 0.5rem;
 	}
 
-	input[type='text'] {
-		padding: 0.4rem 0.5rem;
-		border-radius: 6px;
-		background-color: var(--firest-color);
-		color: var(--gray-text);
-		border: 1px solid var(--border-gray);
-		font-size: 0.95rem;
-	}
-	input:focus {
-		outline: none;
-	}
-
-	input[readonly] {
-		background-color: var(--firest-color);
-		color: var(--gray-text);
-		cursor: not-allowed;
-		border: none;
-	}
-
 	.actions {
 		display: flex;
 		gap: 0.5rem;

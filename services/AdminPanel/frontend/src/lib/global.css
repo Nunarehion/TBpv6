@@ -85,6 +85,24 @@ button:disabled {
 		height: 100%;
 	}
 
+	input[type='text'] {
+		padding: 0.4rem 0.5rem;
+		border-radius: 6px;
+		background-color: var(--firest-color);
+		color: var(--gray-text);
+		border: 1px solid var(--border-gray);
+		font-size: 0.95rem;
+	}
+	input:focus {
+		outline: none;
+	}
+
+	input[readonly] {
+		background-color: var(--firest-color);
+		color: var(--gray-text);
+		cursor: not-allowed;
+		border: none;
+	}
 
 
 /* * {outline: .1px solid gray} */

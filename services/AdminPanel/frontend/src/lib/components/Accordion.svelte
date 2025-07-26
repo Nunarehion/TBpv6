@@ -37,6 +37,8 @@
 		flex-direction: column;
 		margin: 1rem 0;
 		overflow: hidden;
+		height: max-content;
+		font-weight: medium;
 	}
 
 	div.header {
@@ -44,6 +46,10 @@
 		align-items: center;
 		padding: 9px 1rem;
 		border-radius: 0.5rem;
+	}
+	div.header:hover {
+		opacity: .9;
+		cursor: pointer;
 	}
 	div.header .text {
 		flex: 1;
@@ -56,7 +62,7 @@
 		gap: 6px;
 		padding: 0.5rem 1rem;
 		margin-left: 2rem;
-		height: fit-content;
+		height: max-content;
 	}
 	div.icon {
 		flex: 0 0 24px;

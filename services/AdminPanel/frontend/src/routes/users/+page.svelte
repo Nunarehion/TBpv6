@@ -10,7 +10,7 @@
 	} from '$lib/stores/db.js';
 	import { onMount } from 'svelte';
 
-	const collectionName = 'message';
+	const collectionName = 'users';
 
 	onMount(() => {
 		loadDocuments(collectionName);
@@ -29,7 +29,7 @@
 	}
 </script>
 
-<h1>Сообщения</h1>
+<h1>Тригеры</h1>
 
 <DocumentPreview
 	documents={$documents}

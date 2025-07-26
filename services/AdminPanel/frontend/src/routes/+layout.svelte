@@ -1,6 +1,6 @@
 <script>
-	import { onMount } from 'svelte';
 	import { loadCollections } from '$lib/stores/db.js';
+	import { onMount } from 'svelte';
 	import '$lib/reset.css';
 	import '$lib/fonts.css';
 	import '$lib/global.css';
@@ -16,12 +16,29 @@
 			header: 'Конструктор',
 			icon: 'database',
 			items: [
-				{ text: 'Сообщения', link: '/messages' },
-				{ text: 'Кнопки', link: 'buttons' },
-				{ text: 'Тригеры', link: 'trigers' }
+				{ text: 'Сообщения', link: '/messages' }, // Изменено
+				{ text: 'Кнопки', link: '/buttons' }, // Изменено
+				{ text: 'Тригеры', link: '/trigers' }, // Изменено
+				{ text: 'Переменные', link: '/variables' } // Изменено
 			]
 		},
-		{ header: 'About', link: '', items: [2, 3, 4] }
+		{
+			header: 'Статистика',
+			icon: 'database',
+			items: [
+				{ text: 'Тригеры', link: '/statistic/trigers' }, // Уже было правильно, если это полный путь
+				{ text: 'Пользователи', link: '/statistic/users' } // Уже было правильно, если это полный путь
+			]
+		},
+		{
+			header: 'Общее',
+			icon: 'database',
+			items: [
+				{ text: 'Пользователи', link: '/users' }, // Изменено
+				{ text: 'Картинки', link: '/buttons' }, // Изменено
+				{ text: 'Цены', link: '/trigers' } // Изменено
+			]
+		}
 	];
 </script>
 

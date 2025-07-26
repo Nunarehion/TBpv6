@@ -38,6 +38,8 @@
 		flex-direction: column;
 		background: #1f2a37;
 		height: 100vh;
+		height: 100dvh;
+		min-height: max-content;
 		padding: 1rem;
 	}
 	.link {

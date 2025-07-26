@@ -1,32 +1,49 @@
 <script>
+	import { createEventDispatcher } from 'svelte';
+	import { fetchSchema } from '$lib/stores/db.js';
 	import DocumentCard from '$lib/components/allColletion/DocumentCard.svelte';
 	import DocumentsTable from '$lib/components/allColletion/DocumentsTable.svelte';
-	import { createEventDispatcher } from 'svelte';
 
 	export let documents = [];
 	export let loading = false;
 	export let selectedCollection;
-	$: orderedFields = documents.length > 0 ? getOrderedFields(documents[0]) : [];
-
-	const fieldPriority = ['name'];
-	function getOrderedFields(doc) {
-		const allKeys = Object.keys(doc);
-		const presentPriority = fieldPriority.filter((key) => allKeys.includes(key));
-		const remainingKeys = allKeys.filter((key) => !presentPriority.includes(key));
-		return [...presentPriority, ...remainingKeys];
-	}
 
 	const dispatch = createEventDispatcher();
 
 	let viewMode = 'table';
 
-	function handleSave(doc) {
-		dispatch('save', doc);
-	}
-
 	function toggleView(mode) {
 		viewMode = mode;
 	}
+
+	async function handleAdd() {
+		if (!selectedCollection) return;
+
+		const fields = await fetchSchema(selectedCollection);
+
+		const newDoc = {};
+		for (const key of fields) {
+			newDoc[key] = '';
+		}
+
+		dispatch('add', newDoc);
+	}
+	function handleSave(doc) {
+		dispatch('save', doc);
+	}
+	function handleDelete(doc) {
+		dispatch('delete', doc);
+	}
+
+	const fieldPriority = ['name'];
+	function getOrderedFields(doc) {
+		const keys = Object.keys(doc);
+		const presentPriority = fieldPriority.filter((k) => keys.includes(k));
+		const rest = keys.filter((k) => !presentPriority.includes(k));
+		return [...presentPriority, ...rest];
+	}
+
+	$: orderedFields = documents.length > 0 ? getOrderedFields(documents[0]) : [];
 </script>
 
 {#if selectedCollection}
@@ -44,9 +61,11 @@
 
 		{#if loading}
 			<p>Загрузка документов...</p>
-		{:else if documents.length === 0}
+		{:else if documents.length === 0 && viewMode === 'cards'}
 			<p>Документы отсутствуют</p>
-		{:else if viewMode === 'cards'}
+		{/if}
+
+		{#if viewMode === 'cards'}
 			<div
 				style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1rem;"
 			>
@@ -55,7 +74,13 @@
 				{/each}
 			</div>
 		{:else if viewMode === 'table'}
-			<DocumentsTable {documents} {orderedFields} on:save={(e) => handleSave(e.detail)} />
+			<DocumentsTable
+				{documents}
+				{orderedFields}
+				on:save={(e) => handleSave(e.detail)}
+				on:add={handleAdd}
+				on:delete={(e) => handleDelete(e.detail)}
+			/>
 		{/if}
 	</div>
 {/if}
@@ -75,10 +100,5 @@
 	button:disabled {
 		background: red;
 		transform: scale(0.9);
-	}
-	button {
-	}
-	* {
-		/* outline: 1px solid white; */
 	}
 </style>

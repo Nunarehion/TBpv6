@@ -51,3 +51,5 @@ a {
     font: inherit;
     cursor: auto;
 }
+
+* {box-sizing: border-box;}
