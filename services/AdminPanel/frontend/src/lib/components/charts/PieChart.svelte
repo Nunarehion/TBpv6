@@ -8,6 +8,11 @@
     let canvas;
     let chartInstance = null;
 
+    const grayTextColor = getComputedStyle(document.documentElement).getPropertyValue('--gray-text').trim() || '#9ca3af';
+    const mainTextColor = getComputedStyle(document.documentElement).getPropertyValue('--main-text').trim() || '#ffffff';
+    const secondColor = getComputedStyle(document.documentElement).getPropertyValue('--second-color').trim() || '#374151';
+    const borderColor = getComputedStyle(document.documentElement).getPropertyValue('--border-gray').trim() || '#4b556399';
+
     function generateColors(numColors) {
         const colors = [];
         for (let i = 0; i < numColors; i++) {
@@ -43,7 +48,7 @@
                     title: {
                         display: true,
                         text: title,
-                        color: 'black',
+                        color: grayTextColor,
                         font: {
                             size: 16
                         }
@@ -51,7 +56,7 @@
                     legend: {
                         position: 'right',
                         labels: {
-                            color: 'black'
+                            color: mainTextColor
                         }
                     }
                 }
@@ -73,8 +78,21 @@
 </div>
 
 <style>
+    :root {
+        --first-color: #1F2A37;
+        --second-color: #374151;
+        --border-gray: #4b556399;
+        --gray-text: #9ca3af;
+        --main-text: #ffffff;
+        --blue: #1a56db;
+    }
+
     .chart-wrapper {
         width: 100%;
-        height: 300px;
+        height: 350px;
+        background-color: var(--second-color);
+        border-radius: 10px;
+        padding: 1rem;
+        box-sizing: border-box;
     }
 </style>

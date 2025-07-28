@@ -1,15 +1,101 @@
 import time
 from datetime import datetime
 from aiogram import Router
-from aiogram.types import CallbackQuery
+from aiogram.types import Message, CallbackQuery
 from app.storage.mongo_db import read_data
 from .message_service import send_message_by_name
 from .statistics import log_user, log_interaction_event
-import logging # Импортируем модуль логирования
+import logging
 
-logger = logging.getLogger(__name__) # Получаем логгер для этого модуля
+logger = logging.getLogger(__name__)
 
 router = Router()
+
+@router.message()
+async def message_handler(message: Message):
+    start = time.monotonic()
+
+    await log_user(message.from_user)
+
+    user_states = await read_data("user_states")
+    handlers_collection = await read_data("handlers")
+    user_inputs = await read_data("user_inputs")
+
+    user_state = await user_states.find_one({"user_id": message.from_user.id})
+
+    if user_state and user_state.get("waiting_for_input"):
+        input_var = user_state.get("input_var", "input")
+        input_value = message.text
+
+        await user_inputs.update_one(
+            {"user_id": message.from_user.id, "input_var": input_var},
+            {"$set": {"value": input_value}},
+            upsert=True
+        )
+
+        await user_states.update_one(
+            {"user_id": message.from_user.id},
+            {"$set": {"waiting_for_input": False}}
+        )
+
+        pattern = f"target/input/{input_var}"
+
+        user_vars = {}
+        cursor = user_inputs.find({"user_id": message.from_user.id})
+        async for ui in cursor:
+            var_name = ui.get("input_var")
+            var_value = ui.get("value")
+            if var_name and var_value is not None:
+                user_vars[var_name] = var_value
+
+        handler = await handlers_collection.find_one({"pattern": pattern})
+
+        if handler:
+            await send_message_by_name(handler["message_name"], message, context=user_vars)
+        else:
+            await message.answer("Ввод получен, но обработчик не найден.")
+        
+        end = time.monotonic()
+        latency_ms = (end - start) * 1000
+
+        await log_interaction_event(
+            user_id=message.from_user.id,
+            chat_id=message.chat.id,
+            pattern=pattern,
+            latency_ms=latency_ms,
+            timestamp=datetime.utcnow()
+        )
+        return
+
+    handlers = await handlers_collection.find({}).to_list(length=None)
+
+    for handler in handlers:
+        pattern = handler.get("pattern")
+        if not pattern or pattern.startswith("query/"):
+            continue
+
+        if message.text == pattern:
+            user_vars = {}
+            cursor = user_inputs.find({"user_id": message.from_user.id})
+            async for ui in cursor:
+                var_name = ui.get("input_var")
+                var_value = ui.get("value")
+                if var_name and var_value is not None:
+                    user_vars[var_name] = var_value
+
+            await send_message_by_name(handler["message_name"], message, context=user_vars)
+
+            end = time.monotonic()
+            latency_ms = (end - start) * 1000
+
+            await log_interaction_event(
+                user_id=message.from_user.id,
+                chat_id=message.chat.id,
+                pattern=pattern,
+                latency_ms=latency_ms,
+                timestamp=datetime.utcnow()
+            )
+            break
 
 @router.callback_query()
 async def callback_handler(callback: CallbackQuery):
@@ -18,22 +104,19 @@ async def callback_handler(callback: CallbackQuery):
 
     await log_user(callback.from_user)
 
-    # Respond to the callback query immediately to remove the "blinking" and loading indicator on the button.
     await callback.answer()
     logger.debug("Ответ на callback_query отправлен.")
 
     handlers_collection = await read_data("handlers")
     user_inputs = await read_data("user_inputs")
 
-    handlers = await handlers_collection.find({"enabled": True}).to_list(length=None)
+    handlers = await handlers_collection.find({}).to_list(length=None)
     logger.info(f"Загружено {handlers} активных обработчиков из DB.")
     logger.info(f"________ {callback.data} ____________")
     print(callback.data)
-    found_handler = False # Флаг для отслеживания, найден ли обработчик
+    found_handler = False
     for handler in handlers:
         pattern = handler.get("pattern")
-        # Skip patterns that do not start with "query/" or are empty,
-        # as they are intended for text messages
         if not pattern or not pattern.startswith("query/"):
             logger.debug(f"Пропускаю обработчик с паттерном: {pattern} (не 'query/' или пустой).")
             continue
@@ -87,10 +170,7 @@ async def callback_handler(callback: CallbackQuery):
                 timestamp=datetime.utcnow()
             )
             logger.info(f"Обработка callback_query для {pattern} завершена за {latency_ms:.2f} мс.")
-            break # Выходим из цикла после нахождения первого совпадения
+            break
     
     if not found_handler:
         logger.warning(f"Не найден обработчик для callback.data: {callback.data}. Возможно, кнопка не соответствует ни одному паттерну.")
-        # Опционально: можно отправить пользователю сообщение, что действие не распознано
-        # await callback.message.answer("Извините, это действие не распознано.")
-

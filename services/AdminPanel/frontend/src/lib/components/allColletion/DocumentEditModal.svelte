@@ -4,19 +4,16 @@
     let { doc, columns } = $props();
     const dispatch = createEventDispatcher();
 
-    let localDoc = $state({ ...doc }); // Локальная копия документа для редактирования
+    let localDoc = $state({ ...doc });
 
-    // Функция для обработки ввода в поля формы
     function handleInput(event, key) {
         localDoc = { ...localDoc, [key]: event.target.value };
     }
 
-    // Отправка события сохранения с измененным документом
     function saveChanges() {
         dispatch('save', localDoc);
     }
 
-    // Отправка события отмены
     function cancelEdit() {
         dispatch('cancel');
     }
@@ -27,7 +24,7 @@
         <h3>Редактировать документ</h3>
         <form on:submit|preventDefault={saveChanges}>
             {#each columns as col}
-                {#if col !== '_id'} <!-- Отображаем только редактируемые поля, исключая _id -->
+                {#if col !== '_id'}
                     <div class="form-group">
                         <label for={`edit-${col}`}>{col}:</label>
                         <input
@@ -59,7 +56,7 @@
         display: flex;
         justify-content: center;
         align-items: center;
-        z-index: 2000; /* Выше, чем модальное окно подтверждения удаления */
+        z-index: 2000;
     }
 
     .modal-content {

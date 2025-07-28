@@ -1,5 +1,5 @@
 <script>
-	import { onMount } from 'svelte'; // Удалены импорты 'effect' и 'derived'
+	import { onMount } from 'svelte';
 	import {
 		collections,
 		loadCollections,
@@ -20,7 +20,6 @@
 	});
 
 	$effect(() => {
-		// Используем $effect как руну
 		if ($sendingBroadcast) {
 			broadcastStatusMessage = 'Рассылка запускается...';
 		} else if ($error) {
@@ -39,11 +38,10 @@
 		try {
 			await sendBroadcast(selectedMessageName);
 			broadcastStatusMessage = `Рассылка сообщения "${selectedMessageName}" успешно запущена!`;
-			selectedName = '';
+			selectedMessageName = '';
 		} catch (e) {}
 	}
 
-	// Используем $derived.by как руну
 	let messageCollections = $derived.by(() => $collections.filter((name) => name === 'message'));
 </script>
 
@@ -84,38 +82,47 @@
 	</div>
 
 	<hr />
-
-	<h2>Управление данными</h2>
-	<p>
-		Для управления сообщениями и другими данными перейдите в соответствующий раздел. Убедитесь, что
-		в коллекции "message" есть сообщения с уникальными именами.
-	</p>
-	<button on:click={() => (window.location.href = '/')} class="go-to-data-button">
-		Перейти к данным
-	</button>
 </main>
 
 <style>
+	:root {
+		--first-color: #1f2a37;
+		--second-color: #374151;
+		--border-gray: #4b556399;
+		--gray-text: #9ca3af;
+		--main-text: #ffffff;
+		--decor-green: #0e9f6e;
+		--decor-red: #e23939;
+		--blue: #1a56db;
+		--blue-dark: #164eaf;
+	}
+
+	body {
+		background-color: var(--first-color);
+		color: var(--main-text);
+	}
+
 	main {
 		padding: 2rem;
 		font-family: 'Inter', sans-serif;
-		background-color: #f8f9fa;
+		background-color: var(--first-color);
 		min-height: 100vh;
-		color: #333;
+		color: var(--main-text);
 	}
 
 	h1,
 	h2 {
-		color: #2c3e50;
+		color: var(--gray-text);
 		margin-bottom: 1.5rem;
 	}
 
 	.broadcast-section {
-		background-color: #ffffff;
+		background-color: var(--second-color);
 		padding: 2rem;
 		border-radius: 10px;
-		box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+		box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
 		margin-bottom: 2rem;
+		border: 1px solid var(--border-gray);
 	}
 
 	.form-group {
@@ -126,23 +133,24 @@
 		display: block;
 		margin-bottom: 0.5rem;
 		font-weight: bold;
-		color: #555;
+		color: var(--gray-text);
 	}
 
 	select {
 		width: 100%;
 		padding: 0.8rem;
-		border: 1px solid #ced4da;
+		border: 1px solid var(--border-gray);
 		border-radius: 5px;
 		font-size: 1rem;
-		background-color: #f0f2f5;
+		background-color: var(--first-color);
+		color: var(--main-text);
 		box-sizing: border-box;
 	}
 
 	.broadcast-button {
 		padding: 0.8rem 1.5rem;
-		background-color: #007bff;
-		color: white;
+		background-color: var(--blue);
+		color: var(--main-text);
 		border: none;
 		border-radius: 5px;
 		font-size: 1rem;
@@ -151,40 +159,42 @@
 	}
 
 	.broadcast-button:hover:not(:disabled) {
-		background-color: #0056b3;
+		background-color: var(--blue-dark);
 	}
 
 	.broadcast-button:disabled {
-		background-color: #a0c8f5;
+		background-color: #4b5563;
 		cursor: not-allowed;
+		opacity: 0.7;
 	}
 
 	.status-message {
 		margin-top: 1rem;
 		padding: 0.8rem;
 		border-radius: 5px;
-		background-color: #e9ecef;
-		color: #333;
+		background-color: var(--second-color);
+		color: var(--main-text);
 		text-align: center;
+		border: 1px solid var(--border-gray);
 	}
 
 	.error-message {
-		background-color: #f8d7da;
-		color: #721c24;
-		border: 1px solid #f5c6cb;
+		background-color: #631c26;
+		color: var(--main-text);
+		border: 1px solid var(--decor-red);
 	}
 
 	hr {
 		border: 0;
-		border-top: 1px solid #eee;
+		border-top: 1px solid var(--border-gray);
 		margin: 2rem 0;
 	}
 
 	.go-to-data-button {
 		padding: 0.8rem 1.5rem;
-		background-color: #6c757d;
-		color: white;
-		border: none;
+		background-color: var(--second-color);
+		color: var(--main-text);
+		border: 1px solid var(--border-gray);
 		border-radius: 5px;
 		font-size: 1rem;
 		cursor: pointer;
@@ -192,6 +202,6 @@
 	}
 
 	.go-to-data-button:hover {
-		background-color: #5a6268;
+		background-color: #4b5563;
 	}
 </style>

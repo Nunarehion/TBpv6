@@ -35,11 +35,11 @@
 			background-color 0.2s,
 			border-color 0.2s;
 	}
-
+	/* 
 	.checkbox-wrapper input[type='checkbox']:checked {
 		background-color: #007acc;
-		/* border-color: #007acc; */
-	}
+		border-color: #007acc;
+	} */
 
 	.checkbox-wrapper input[type='checkbox']:checked::after {
 		content: '';

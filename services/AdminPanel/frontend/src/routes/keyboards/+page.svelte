@@ -10,11 +10,7 @@
 	} from '$lib/stores/db.js';
 	import { onMount } from 'svelte';
 
-	const collectionName = 'message';
-
-	const fieldsToDisplay = ['name', '_id', 'text', 'keyboard_name', 'images'];
-
-	const fieldsOrder = ['name', 'text', 'keyboard_name', 'images', 'created_at', '_id'];
+	const collectionName = 'keyboards';
 
 	onMount(() => {
 		loadDocuments(collectionName);
@@ -39,8 +35,6 @@
 	documents={$documents}
 	loading={$loadingDocuments}
 	selectedCollection={collectionName}
-	isMessageRoute={true}
-	displayFields={['name', '_id', 'text', 'keyboard_name', 'images']}
 	orderFields={['name', 'text', 'keyboard_name', 'images', 'created_at', '_id']}
 	on:save={(e) => handleSave(e.detail)}
 	on:add={(e) => handleAdd(e.detail)}

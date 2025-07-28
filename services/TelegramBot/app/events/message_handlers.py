@@ -10,12 +10,9 @@ router = Router()
 
 @router.message()
 async def message_handler(message: Message):
-    """
-    Обрабатывает входящие текстовые сообщения пользователей с замером времени и логированием.
-    """
-    start = time.monotonic() # Начало замера времени
+    start = time.monotonic()
 
-    await log_user(message.from_user) # Логируем информацию о пользователе в самом начале
+    await log_user(message.from_user)
 
     user_states = await read_data("user_states")
     handlers_collection = await read_data("handlers")
@@ -23,7 +20,6 @@ async def message_handler(message: Message):
 
     user_state = await user_states.find_one({"user_id": message.from_user.id})
 
-    # Обработка состояния ожидания ввода
     if user_state and user_state.get("waiting_for_input"):
         input_var = user_state.get("input_var", "input")
         input_value = message.text
@@ -49,17 +45,16 @@ async def message_handler(message: Message):
             if var_name and var_value is not None:
                 user_vars[var_name] = var_value
 
-        handler = await handlers_collection.find_one({"pattern": pattern, "enabled": True})
+        handler = await handlers_collection.find_one({"pattern": pattern})
 
         if handler:
             await send_message_by_name(handler["message_name"], message, context=user_vars)
         else:
             await message.answer("Ввод получен, но обработчик не найден.")
         
-        end = time.monotonic() # Конец замера времени
+        end = time.monotonic()
         latency_ms = (end - start) * 1000
 
-        # Логируем событие ПОСЛЕ завершения обработки и замера задержки
         await log_interaction_event(
             user_id=message.from_user.id,
             chat_id=message.chat.id,
@@ -69,8 +64,7 @@ async def message_handler(message: Message):
         )
         return
 
-    # Обработка обычных текстовых сообщений, соответствующих паттернам
-    handlers = await handlers_collection.find({"enabled": True}).to_list(length=None)
+    handlers = await handlers_collection.find({}).to_list(length=None)
 
     for handler in handlers:
         pattern = handler.get("pattern")
@@ -88,10 +82,9 @@ async def message_handler(message: Message):
 
             await send_message_by_name(handler["message_name"], message, context=user_vars)
 
-            end = time.monotonic() # Конец замера времени
+            end = time.monotonic()
             latency_ms = (end - start) * 1000
 
-            # Логируем событие ПОСЛЕ завершения обработки и замера задержки
             await log_interaction_event(
                 user_id=message.from_user.id,
                 chat_id=message.chat.id,
@@ -99,4 +92,4 @@ async def message_handler(message: Message):
                 latency_ms=latency_ms,
                 timestamp=datetime.utcnow()
             )
-            break # Выходим из цикла после нахождения первого совпадения
+            break

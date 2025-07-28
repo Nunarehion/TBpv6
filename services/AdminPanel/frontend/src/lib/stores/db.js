@@ -18,7 +18,6 @@ export const loadingClicksByPatternData = writable(false);
 
 export const handlerPatterns = writable([]);
 
-// НОВЫЕ СТОРЫ ДЛЯ СТАТИСТИКИ ПОЛЬЗОВАТЕЛЕЙ
 export const totalUsersStatistics = writable(null);
 export const loadingTotalUsersStatistics = writable(false);
 
@@ -31,18 +30,29 @@ export const loadingActiveUsersTimeSeriesData = writable(false);
 export const mostActiveUsersData = writable([]);
 export const loadingMostActiveUsersData = writable(false);
 
-// НОВЫЙ СТОР ДЛЯ РАССЫЛКИ
 export const sendingBroadcast = writable(false);
+
+export const loadingImageUpload = writable(false);
+export const loadingImageRename = writable(false);
+export const loadingImageDelete = writable(false);
+
+export const images = writable([]);
+export const loadingImages = writable(false);
 
 
 export async function loadCollections() {
     loadingCollections.set(true);
+    error.set(null);
     try {
         const res = await fetch('/api');
-        if (!res.ok) throw new Error('Не удалось загрузить коллекции');
+        if (!res.ok) {
+            const errData = await res.json();
+            throw new Error(errData.message || 'Не удалось загрузить коллекции');
+        }
         const data = await res.json();
         collections.set(data);
     } catch (e) {
+        console.error('Ошибка в loadCollections:', e);
         error.set(e.message);
     } finally {
         loadingCollections.set(false);
@@ -53,12 +63,17 @@ export async function loadDocuments(name) {
     selectedCollection.set(name);
     documents.set([]);
     loadingDocuments.set(true);
+    error.set(null);
     try {
         const res = await fetch(`/api/${name}`);
-        if (!res.ok) throw new Error('Не удалось загрузить документы');
+        if (!res.ok) {
+            const errData = await res.json();
+            throw new Error(errData.message || 'Не удалось загрузить документы');
+        }
         const data = await res.json();
         documents.set(data);
     } catch (e) {
+        console.error('Ошибка в loadDocuments:', e);
         error.set(e.message);
     } finally {
         loadingDocuments.set(false);
@@ -66,16 +81,28 @@ export async function loadDocuments(name) {
 }
 
 export async function saveDocument(name, doc) {
-    const { _id, ...data } = doc;
-    await fetch(`/api/${name}/${_id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-    });
-    await loadDocuments(name);
+    error.set(null);
+    try {
+        const { _id, ...data } = doc;
+        const res = await fetch(`/api/${name}/${_id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data),
+        });
+        if (!res.ok) {
+            const errData = await res.json();
+            throw new Error(errData.message || 'Не удалось сохранить документ');
+        }
+        await loadDocuments(name);
+    } catch (e) {
+        console.error('Ошибка в saveDocument:', e);
+        error.set(e.message);
+        throw e;
+    }
 }
 
 export async function addDocument(name, doc) {
+    error.set(null);
     try {
         const res = await fetch(`/api/${name}`, {
             method: 'POST',
@@ -84,31 +111,41 @@ export async function addDocument(name, doc) {
             },
             body: JSON.stringify(doc),
         });
-        if (!res.ok) throw new Error('Ошибка при добавлении документа');
+        if (!res.ok) {
+            const errData = await res.json();
+            throw new Error(errData.message || 'Ошибка при добавлении документа');
+        }
         const result = await res.json();
 
         const newDoc = { ...doc, _id: result.insertedId };
         documents.update((docs) => [newDoc, ...docs]);
         return newDoc;
     } catch (e) {
+        console.error('Ошибка в addDocument:', e);
         error.set(e.message);
         throw e;
     }
 }
 
 export async function fetchSchema(name) {
+    error.set(null);
     try {
         const res = await fetch(`/api/schema/${name}`);
-        if (!res.ok) throw new Error('Не удалось получить схему');
+        if (!res.ok) {
+            const errData = await res.json();
+            throw new Error(errData.message || 'Не удалось получить схему');
+        }
         const fields = await res.json();
         return fields;
     } catch (e) {
+        console.error('Ошибка в fetchSchema:', e);
         error.set(e.message);
         return [];
     }
 }
 
 export async function deleteDocument(name, id) {
+    error.set(null);
     try {
         const res = await fetch(`/api/${name}/${id}`, {
             method: 'DELETE',
@@ -121,11 +158,12 @@ export async function deleteDocument(name, id) {
                 errorBody = null;
             }
             console.error('Ошибка удаления:', res.status, errorBody);
-            throw new Error(errorBody?.error || 'Ошибка при удалении документа');
+            throw new new Error(errorBody?.error || 'Ошибка при удалении документа');
         }
 
         documents.update((docs) => docs.filter((d) => d._id !== id));
     } catch (e) {
+        console.error('Ошибка в deleteDocument:', e);
         error.set(e.message);
         throw e;
     }
@@ -134,16 +172,21 @@ export async function deleteDocument(name, id) {
 export async function fetchClickStatistics(startDate, endDate, pattern = null) {
     loadingClickStatistics.set(true);
     clickStatistics.set(null);
+    error.set(null);
     try {
         let url = `/api/statistics/clicks?startDate=${startDate}&endDate=${endDate}`;
         if (pattern) {
             url += `&pattern=${pattern}`;
         }
         const res = await fetch(url);
-        if (!res.ok) throw new Error('Не удалось загрузить статистику кликов');
+        if (!res.ok) {
+            const errData = await res.json();
+            throw new Error(errData.message || 'Не удалось загрузить статистику кликов');
+        }
         const data = await res.json();
         clickStatistics.set(data);
     } catch (e) {
+        console.error('Ошибка в fetchClickStatistics:', e);
         error.set(e.message);
         clickStatistics.set({ count: 0, error: e.message });
     } finally {
@@ -154,13 +197,18 @@ export async function fetchClickStatistics(startDate, endDate, pattern = null) {
 export async function fetchTimeSeriesClickStatistics(startDate, endDate, interval) {
     loadingTimeSeriesData.set(true);
     timeSeriesData.set([]);
+    error.set(null);
     try {
         const url = `/api/statistics/clicks/time-series?startDate=${startDate}&endDate=${endDate}&interval=${interval}`;
         const res = await fetch(url);
-        if (!res.ok) throw new Error('Не удалось загрузить временные ряды кликов');
+        if (!res.ok) {
+            const errData = await res.json();
+            throw new Error(errData.message || 'Не удалось загрузить временные ряды кликов');
+        }
         const data = await res.json();
         timeSeriesData.set(data);
     } catch (e) {
+        console.error('Ошибка в fetchTimeSeriesClickStatistics:', e);
         error.set(e.message);
         timeSeriesData.set([]);
     } finally {
@@ -171,13 +219,18 @@ export async function fetchTimeSeriesClickStatistics(startDate, endDate, interva
 export async function fetchClicksByPatternStatistics(startDate, endDate) {
     loadingClicksByPatternData.set(true);
     clicksByPatternData.set([]);
+    error.set(null);
     try {
         const url = `/api/statistics/clicks/by-pattern?startDate=${startDate}&endDate=${endDate}`;
         const res = await fetch(url);
-        if (!res.ok) throw new Error('Не удалось загрузить статистику кликов по паттернам');
+        if (!res.ok) {
+            const errData = await res.json();
+            throw new Error(errData.message || 'Не удалось загрузить статистику кликов по паттернам');
+        }
         const data = await res.json();
         clicksByPatternData.set(data);
     } catch (e) {
+        console.error('Ошибка в fetchClicksByPatternStatistics:', e);
         error.set(e.message);
         clicksByPatternData.set([]);
     } finally {
@@ -186,16 +239,21 @@ export async function fetchClicksByPatternStatistics(startDate, endDate) {
 }
 
 export async function fetchHandlerPatterns() {
+    error.set(null);
     try {
-        const res = await fetch('/api/schema/handlers'); // Предполагаем, что 'handlers' - это коллекция с паттернами
-        if (!res.ok) throw new Error('Не удалось загрузить паттерны обработчиков');
+        const res = await fetch('/api/schema/handlers');
+        if (!res.ok) {
+            const errData = await res.json();
+            throw new Error(errData.message || 'Не удалось загрузить паттерны обработчиков');
+        }
         const fields = await res.json();
-        // Фильтруем только поле 'pattern', если оно есть
         const patternField = fields.find(field => field === 'pattern');
         if (patternField) {
-            // Если есть поле 'pattern', загружаем все документы из 'handlers' и извлекаем уникальные паттерны
             const handlersRes = await fetch('/api/handlers');
-            if (!handlersRes.ok) throw new Error('Не удалось загрузить обработчики');
+            if (!handlersRes.ok) {
+                const errData = await handlersRes.json();
+                throw new Error(errData.message || 'Не удалось загрузить обработчики');
+            }
             const handlers = await handlersRes.json();
             const uniquePatterns = Array.from(new Set(handlers.map(h => h.pattern).filter(p => p != null)));
             handlerPatterns.set(['Все', ...uniquePatterns]);
@@ -203,6 +261,7 @@ export async function fetchHandlerPatterns() {
             handlerPatterns.set(['Все']);
         }
     } catch (e) {
+        console.error('Ошибка в fetchHandlerPatterns:', e);
         error.set(e.message);
         handlerPatterns.set(['Все']);
     }
@@ -212,13 +271,18 @@ export async function fetchHandlerPatterns() {
 export async function fetchTotalUsersStatistics(startDate, endDate) {
     loadingTotalUsersStatistics.set(true);
     totalUsersStatistics.set(null);
+    error.set(null);
     try {
         const url = `/api/statistics/users/total?startDate=${startDate}&endDate=${endDate}`;
         const res = await fetch(url);
-        if (!res.ok) throw new Error('Не удалось загрузить общую статистику пользователей');
+        if (!res.ok) {
+            const errData = await res.json();
+            throw new Error(errData.message || 'Не удалось загрузить общую статистику пользователей');
+        }
         const data = await res.json();
         totalUsersStatistics.set(data);
     } catch (e) {
+        console.error('Ошибка в fetchTotalUsersStatistics:', e);
         error.set(e.message);
         totalUsersStatistics.set({ count: 0, error: e.message });
     } finally {
@@ -230,13 +294,18 @@ export async function fetchTotalUsersStatistics(startDate, endDate) {
 export async function fetchNewUsersTimeSeries(startDate, endDate, interval) {
     loadingNewUsersTimeSeriesData.set(true);
     newUsersTimeSeriesData.set([]);
+    error.set(null);
     try {
         const url = `/api/statistics/users/new-over-time?startDate=${startDate}&endDate=${endDate}&interval=${interval}`;
         const res = await fetch(url);
-        if (!res.ok) throw new Error('Не удалось загрузить статистику новых пользователей по времени');
+        if (!res.ok) {
+            const errData = await res.json();
+            throw new Error(errData.message || 'Не удалось загрузить статистику новых пользователей по времени');
+        }
         const data = await res.json();
         newUsersTimeSeriesData.set(data);
     } catch (e) {
+        console.error('Ошибка в fetchNewUsersTimeSeries:', e);
         error.set(e.message);
         newUsersTimeSeriesData.set([]);
     } finally {
@@ -248,13 +317,18 @@ export async function fetchNewUsersTimeSeries(startDate, endDate, interval) {
 export async function fetchActiveUsersTimeSeries(startDate, endDate, interval) {
     loadingActiveUsersTimeSeriesData.set(true);
     activeUsersTimeSeriesData.set([]);
+    error.set(null);
     try {
         const url = `/api/statistics/users/active-over-time?startDate=${startDate}&endDate=${endDate}&interval=${interval}`;
         const res = await fetch(url);
-        if (!res.ok) throw new Error('Не удалось загрузить статистику активных пользователей по времени');
+        if (!res.ok) {
+            const errData = await res.json();
+            throw new Error(errData.message || 'Не удалось загрузить статистику активных пользователей по времени');
+        }
         const data = await res.json();
         activeUsersTimeSeriesData.set(data);
     } catch (e) {
+        console.error('Ошибка в fetchActiveUsersTimeSeries:', e);
         error.set(e.message);
         activeUsersTimeSeriesData.set([]);
     } finally {
@@ -266,13 +340,18 @@ export async function fetchActiveUsersTimeSeries(startDate, endDate, interval) {
 export async function fetchMostActiveUsers(startDate, endDate, limit = 10) {
     loadingMostActiveUsersData.set(true);
     mostActiveUsersData.set([]);
+    error.set(null);
     try {
         const url = `/api/statistics/users/most-active?startDate=${startDate}&endDate=${endDate}&limit=${limit}`;
         const res = await fetch(url);
-        if (!res.ok) throw new Error('Не удалось загрузить список самых активных пользователей');
+        if (!res.ok) {
+            const errData = await res.json();
+            throw new Error(errData.message || 'Не удалось загрузить список самых активных пользователей');
+        }
         const data = await res.json();
         mostActiveUsersData.set(data);
     } catch (e) {
+        console.error('Ошибка в fetchMostActiveUsers:', e);
         error.set(e.message);
         mostActiveUsersData.set([]);
     } finally {
@@ -282,7 +361,7 @@ export async function fetchMostActiveUsers(startDate, endDate, limit = 10) {
 
 export async function sendBroadcast(messageName) {
     sendingBroadcast.set(true);
-    error.set(null); // Сбросить предыдущие ошибки
+    error.set(null);
     try {
         const res = await fetch('/api/broadcast', {
             method: 'POST',
@@ -300,10 +379,128 @@ export async function sendBroadcast(messageName) {
         const result = await res.json();
         console.log('Рассылка успешно запущена:', result);
     } catch (e) {
-        error.set(e.message);
         console.error('Ошибка при запуске рассылки:', e);
-        throw e; // Перебросить ошибку для обработки в UI
+        error.set(e.message);
+        throw e;
     } finally {
         sendingBroadcast.set(false);
+    }
+}
+
+
+export async function uploadImage(imageFile) {
+    loadingImageUpload.set(true);
+    error.set(null);
+    try {
+        const formData = new FormData();
+        formData.append('image', imageFile);
+
+        const res = await fetch('/api/images/upload', {
+            method: 'POST',
+            body: formData,
+        });
+
+        if (!res.ok) {
+            const errorData = await res.json();
+            throw new Error(errorData.message || 'Ошибка при загрузке изображения');
+        }
+
+        const result = await res.json();
+        return result;
+    } catch (e) {
+        console.error('Ошибка при загрузке изображения:', e);
+        error.set(e.message);
+        throw e;
+    } finally {
+        loadingImageUpload.set(false);
+    }
+}
+
+export async function renameImage(oldName, newName) {
+    loadingImageRename.set(true);
+    error.set(null);
+    try {
+        const res = await fetch('/api/images/rename', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ oldName, newName }),
+        });
+
+        if (!res.ok) {
+            const errorData = await res.json();
+            throw new Error(errorData.message || 'Ошибка при переименовании изображения');
+        }
+
+        const result = await res.json();
+        return result;
+    } catch (e) {
+        console.error('Ошибка при переименовании изображения:', e);
+        error.set(e.message);
+        throw e;
+    } finally {
+        loadingImageRename.set(false);
+    }
+}
+
+export async function deleteImage(filename) {
+    loadingImageDelete.set(true);
+    error.set(null);
+    try {
+        const res = await fetch(`/api/images/${filename}`, {
+            method: 'DELETE',
+        });
+
+        if (!res.ok) {
+            const errorData = await res.json();
+            throw new Error(errorData.message || 'Ошибка при удалении изображения');
+        }
+
+        images.update(currentImages => currentImages.filter(img => img.filename !== filename));
+
+        const result = await res.json();
+        console.log('Изображение успешно удалено:', result);
+        return result;
+    } catch (e) {
+        console.error('Ошибка при удалении изображения:', e);
+        error.set(e.message);
+        throw e;
+    } finally {
+        loadingImageDelete.set(false);
+    }
+}
+
+export async function fetchImages() {
+    loadingImages.set(true);
+    error.set(null);
+    try {
+        const response = await fetch('/api/images');
+        
+        if (!response.ok) {
+            const errorData = await response.json();
+            console.error('Ошибка API при получении изображений:', errorData.message);
+            throw new Error(errorData.message || 'Не удалось получить список изображений.');
+        }
+
+        const data = await response.json();
+        console.log('Полученные данные от сервера для изображений:', data);
+
+        if (data.images && Array.isArray(data.images)) {
+            images.set(data.images);
+            console.log('Стор images обновлен:', data.images);
+        } else {
+            images.set([]);
+            throw new Error('Некорректный формат данных изображений от сервера.');
+        }
+
+        console.log('Серверная директория загрузки (из ответа API):', data.uploadDirectory);
+
+    } catch (e) {
+        console.error('Произошла ошибка в fetchImages:', e);
+        error.set(e.message);
+        images.set([]);
+    } finally {
+        loadingImages.set(false);
     }
 }

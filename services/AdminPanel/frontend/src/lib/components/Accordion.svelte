@@ -35,7 +35,7 @@
 	div.accordion {
 		display: flex;
 		flex-direction: column;
-		margin: 1rem 0;
+
 		overflow: hidden;
 		height: max-content;
 		font-weight: medium;
@@ -45,10 +45,11 @@
 		display: flex;
 		align-items: center;
 		padding: 9px 1rem;
+		padding-bottom: 0;
 		border-radius: 0.5rem;
 	}
 	div.header:hover {
-		opacity: .9;
+		opacity: .8;
 		cursor: pointer;
 	}
 	div.header .text {
@@ -71,4 +72,13 @@
 	div.text {
 		margin-left: 0.5rem;
 	}
+
+	.accordion .header .icon {
+        width: 1.5rem;
+        height: 1.5rem;
+        color: var(#fff);
+		opacity: 1;
+    }
+
+
 </style>

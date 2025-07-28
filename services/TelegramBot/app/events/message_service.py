@@ -1,7 +1,9 @@
 import logging
 import re
+import os
+from urllib.parse import urlparse
 from aiogram import Bot, types
-from aiogram.types import Message, InputMediaPhoto, InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton
+from aiogram.types import Message, InputMediaPhoto, InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton, BufferedInputFile
 from app.storage.mongo_db import read_data, messages_collection
 from .keyboard_builder import get_keyboard_by_name, build_inline_keyboard
 from .variables import get_all_variables
@@ -10,18 +12,15 @@ from .statistics import log_user, log_interaction_event
 
 logger = logging.getLogger(__name__)
 
+LOCAL_IMAGE_MOUNT_PATH = "/bot_uploads"
+LOCAL_BACKEND_UPLOADS_BASE_URL = "http://admin_backend:3000/uploads/"
+
+
 class SafeDict(dict):
-    """
-    A dictionary subclass that returns a formatted string for missing keys,
-    preventing KeyError exceptions during string formatting.
-    """
     def __missing__(self, key):
         return "{" + key + "}"
 
 async def get_message_by_name(name: str) -> dict | None:
-    """
-    Возвращает сообщение по имени из коллекции MongoDB.
-    """
     collection = await read_data("message")
     return await collection.find_one({"name": name})
 
@@ -31,9 +30,6 @@ async def format_text_with_calculation(
     user_inputs_collection,
     extra_vars: dict = None
 ) -> str:
-    """
-    Подставляет пользовательские переменные и вычисляет выражения внутри фигурных скобок.
-    """
     user_inputs_cursor = user_inputs_collection.find({"user_id": user_id})
     user_inputs_docs = await user_inputs_cursor.to_list(length=None)
     user_vars = {doc["input_var"]: doc["value"] for doc in user_inputs_docs}
@@ -49,7 +45,6 @@ async def format_text_with_calculation(
         safe_vars.update(extra_vars)
 
     def eval_expression(expr: str) -> str:
-        """Вычисляет выражение expr с безопасным окружением."""
         safe_builtins = {
             "int": int,
             "float": float,
@@ -79,17 +74,12 @@ async def send_message_to_user_by_name(
     user_id_for_logging: int,
     context: dict = None
 ):
-    """
-    Загружает сообщение по имени и отправляет его конкретному пользователю
-    через экземпляр бота и chat_id, с подстановкой и вычислениями.
-    Используется для рассылок и других прямых отправок.
-    """
     message_data = await get_message_by_name(message_name)
     if not message_data:
         logger.warning(f"Сообщение с именем '{message_name}' не найдено в базе данных.")
         return
 
-    images = message_data.get("images", [])
+    images_from_db = message_data.get("images", [])
     raw_text = message_data.get("text", "")
     context = context or {}
 
@@ -100,30 +90,73 @@ async def send_message_to_user_by_name(
     user_inputs_collection = await read_data("user_inputs")
     final_text = await format_text_with_calculation(raw_text, user_id_for_logging, user_inputs_collection, extra_vars=all_vars)
 
+    media_to_send = []
+    for img_url in images_from_db:
+        logger.info(f"Получен URL изображения из БД: {img_url}")
+        logger.info(f"LOCAL_BACKEND_UPLOADS_BASE_URL: {LOCAL_BACKEND_UPLOADS_BASE_URL}")
+
+        if img_url.startswith(LOCAL_BACKEND_UPLOADS_BASE_URL):
+            logger.info(f"URL '{img_url}' распознан как локальный (начинается с {LOCAL_BACKEND_UPLOADS_BASE_URL}).")
+            try:
+                file_name = os.path.basename(urlparse(img_url).path)
+                
+                local_file_path = os.path.join(LOCAL_IMAGE_MOUNT_PATH, file_name)
+
+                logger.info(f"Имя файла из URL: {file_name}")
+                logger.info(f"Предполагаемый локальный путь: {local_file_path}")
+
+                if not os.path.exists(local_file_path):
+                    logger.error(f"Файл изображения НЕ НАЙДЕН по локальному пути: {local_file_path} (из URL: {img_url}). Проверьте монтирование папки и наличие файла.")
+                    continue
+
+                with open(local_file_path, "rb") as f:
+                    media_to_send.append(InputMediaPhoto(media=BufferedInputFile(f.read(), filename=file_name)))
+                logger.info(f"Файл '{local_file_path}' успешно прочитан и добавлен для отправки.")
+            except Exception as e:
+                logger.error(f"Ошибка при обработке локального изображения '{img_url}': {e}", exc_info=True)
+                continue
+        else:
+            if img_url.startswith("http://") or img_url.startswith("https://"):
+                logger.info(f"URL '{img_url}' распознан как внешняя ссылка. Отправляем как есть.")
+                media_to_send.append(InputMediaPhoto(media=img_url))
+            else:
+                logger.warning(f"Некорректный или неопознанный URL изображения, пропущен: {img_url}")
+                continue
+
+
     markup = None
-    # Клавиатура прикрепляется только к текстовому сообщению или одному фото
-    if len(images) <= 1:
+    if len(media_to_send) <= 1:
         keyboard_data = await get_keyboard_by_name(message_data.get("keyboard_name"))
         markup = await build_inline_keyboard(keyboard_data) if keyboard_data else None
 
+    if not media_to_send and not final_text:
+        logger.warning(f"Отправка сообщения '{message_name}' пользователю {chat_id}: нет ни медиа, ни текста. Сообщение не будет отправлено.")
+    elif not media_to_send and final_text:
+        logger.info(f"Отправка только текстового сообщения для '{message_name}' пользователю {chat_id}.")
+    else:
+        logger.info(f"Подготовлено {len(media_to_send)} медиа-элемент(ов) для отправки для '{message_name}' пользователю {chat_id}.")
+
+
     try:
-        if len(images) == 1:
-            await bot.send_photo(chat_id=chat_id, photo=images[0], caption=final_text, reply_markup=markup, parse_mode="HTML")
-        elif len(images) > 1:
-            media = [
-                InputMediaPhoto(media=url, caption=final_text if i == 0 else "")
-                for i, url in enumerate(images)
-            ]
-            # Telegram API: send_media_group не поддерживает reply_markup.
-            # Если нужна клавиатура, ее нужно отправить отдельным сообщением.
-            await bot.send_media_group(chat_id=chat_id, media=media)
+        if len(media_to_send) == 1:
+            await bot.send_photo(chat_id=chat_id, photo=media_to_send[0].media, caption=final_text, reply_markup=markup, parse_mode="HTML")
+            logger.info(f"Сообщение '{message_name}' (одно фото) успешно отправлено пользователю {chat_id}.")
+        elif len(media_to_send) > 1:
+            await bot.send_media_group(chat_id=chat_id, media=media_to_send)
+            logger.info(f"Сообщение '{message_name}' (группа фото) успешно отправлено пользователю {chat_id}.")
             if markup:
-                await bot.send_message(chat_id=chat_id, text=".", reply_markup=markup, parse_mode="HTML") # Отправляем пустой текст с клавиатурой
+                await bot.send_message(chat_id=chat_id, text=".", reply_markup=markup, parse_mode="HTML")
+                logger.info(f"Клавиатура для '{message_name}' отправлена отдельным сообщением пользователю {chat_id}.")
         else:
-            await bot.send_message(chat_id=chat_id, text=final_text, reply_markup=markup, parse_mode="HTML")
+            if final_text:
+                await bot.send_message(chat_id=chat_id, text=final_text, reply_markup=markup, parse_mode="HTML")
+                logger.info(f"Сообщение '{message_name}' (только текст) успешно отправлено пользователю {chat_id}.")
+            else:
+                logger.warning(f"Нечего отправлять для сообщения '{message_name}' пользователю {chat_id}: нет текста и нет медиа.")
+
 
     except Exception as e:
-        logger.error(f"Ошибка при отправке сообщения '{message_name}' пользователю {chat_id}: {e}")
+        logger.error(f"Критическая ошибка при отправке сообщения '{message_name}' пользователю {chat_id}: {e}", exc_info=True)
 
 
 async def send_message_by_name(
@@ -131,12 +164,6 @@ async def send_message_by_name(
     target: Message | types.Message,
     context: dict = None
 ):
-    """
-    Загружает сообщение по имени и отправляет его пользователю,
-    используя объект Message (для ответов на входящие сообщения/колбэки).
-    Эта функция теперь является оберткой для send_message_to_user_by_name.
-    """
-    # Вызываем новую функцию, передавая ей необходимые параметры из объекта target
     await send_message_to_user_by_name(
         message_name=message_name,
         bot=target.bot,
@@ -144,6 +171,4 @@ async def send_message_by_name(
         user_id_for_logging=target.from_user.id,
         context=context
     )
-    # log_user остается здесь, так как target.from_user доступен
     await log_user(target.from_user)
-

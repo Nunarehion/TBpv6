@@ -18,59 +18,88 @@
     import PieChart from '$lib/components/charts/PieChart.svelte';
 
     const {
-        startDate,
-        endDate,
-        interval,
         loadAllStatistics,
         registerLoadFunction,
-        error
+        error,
+        interval: sharedInterval
     } = getContext('statsContext');
+
+    let startDate = $state('');
+    let endDate = $state('');
+    let interval = $state(sharedInterval);
 
     let selectedPattern = $state('');
 
+    let showLoadingMessage = $state(false);
+
     onMount(async () => {
-        registerLoadFunction(async (startIso, endIso, currentInterval) => {
-            await loadClickStats(startIso, endIso, selectedPattern);
+        const now = new Date();
+        const tomorrow = new Date(now);
+        tomorrow.setDate(now.getDate() + 1);
+        endDate = tomorrow.toISOString().slice(0, 10);
+
+        const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        startDate = sevenDaysAgo.toISOString().slice(0, 10);
+
+        // Register load functions with a delay wrapper
+        registerLoadFunction(async (startIso, endIso) => {
+            await delayedLoad(loadClickStats, startIso, endIso, selectedPattern);
         });
         registerLoadFunction(async (startIso, endIso, currentInterval) => {
-            await loadTimeSeriesStats(startIso, endIso, currentInterval);
+            await delayedLoad(loadTimeSeriesStats, startIso, endIso, currentInterval);
         });
         registerLoadFunction(async (startIso, endIso) => {
-            await loadClicksByPatternStats(startIso, endIso);
+            await delayedLoad(loadClicksByPatternStats, startIso, endIso);
         });
 
         await fetchHandlerPatterns();
+        await loadAllStatistics();
     });
+
+    // Utility function to enforce a minimum loading display time
+    async function delayedLoad(func, ...args) {
+        showLoadingMessage = true;
+        const startTime = Date.now();
+        await func(...args);
+        const elapsedTime = Date.now() - startTime;
+        const minDisplayTime = 300; // Minimum time loading message is shown in ms
+
+        if (elapsedTime < minDisplayTime) {
+            await new Promise(resolve => setTimeout(resolve, minDisplayTime - elapsedTime));
+        }
+        showLoadingMessage = false;
+    }
 
     function getAdjustedEndDateIso(dateString) {
         if (!dateString) return '';
         const dt = new Date(dateString);
-        dt.setSeconds(59);
-        dt.setMilliseconds(999);
+        dt.setHours(23, 59, 59, 999);
         return dt.toISOString();
     }
 
     async function loadClickStats(startIso, endIso, pattern) {
         error.set(null);
+        const adjustedEndIso = getAdjustedEndDateIso(endIso);
         if (
             !startIso ||
-            !endIso ||
+            !adjustedEndIso ||
             isNaN(new Date(startIso).getTime()) ||
-            isNaN(new Date(endIso).getTime())
+            isNaN(new Date(adjustedEndIso).getTime())
         ) {
             error.set('Пожалуйста, выберите корректные начальную и конечную даты.');
             return;
         }
-        await fetchClickStatistics(startIso, endIso, pattern || null);
+        await fetchClickStatistics(startIso, adjustedEndIso, pattern || null);
     }
 
     async function loadTimeSeriesStats(startIso, endIso, currentInterval) {
         error.set(null);
+        const adjustedEndIso = getAdjustedEndDateIso(endIso);
         if (
             !startIso ||
-            !endIso ||
+            !adjustedEndIso ||
             isNaN(new Date(startIso).getTime()) ||
-            isNaN(new Date(endIso).getTime())
+            isNaN(new Date(adjustedEndIso).getTime())
         ) {
             error.set('Пожалуйста, выберите корректные начальную и конечную даты.');
             return;
@@ -81,21 +110,22 @@
             backendInterval = 'second';
         }
 
-        await fetchTimeSeriesClickStatistics(startIso, endIso, backendInterval);
+        await fetchTimeSeriesClickStatistics(startIso, adjustedEndIso, backendInterval);
     }
 
     async function loadClicksByPatternStats(startIso, endIso) {
         error.set(null);
+        const adjustedEndIso = getAdjustedEndDateIso(endIso);
         if (
             !startIso ||
-            !endIso ||
+            !adjustedEndIso ||
             isNaN(new Date(startIso).getTime()) ||
-            isNaN(new Date(endIso).getTime())
+            isNaN(new Date(adjustedEndIso).getTime())
         ) {
             error.set('Пожалуйста, выберите корректные начальную и конечную даты.');
             return;
         }
-        await fetchClicksByPatternStatistics(startIso, endIso);
+        await fetchClicksByPatternStatistics(startIso, adjustedEndIso);
     }
 
     function aggregateData(data, customInterval) {
@@ -152,161 +182,267 @@
     });
 </script>
 
-    <h1>Статистика Бота</h1>
+<h1>Статистика Бота</h1>
 
-    <section class="stat-section">
-        <h2>Общая статистика</h2>
-        <div class="input-group-container">
-            <div>
-                <label for="statStartDate">Начальная дата:</label>
-                <input type="datetime-local" id="statStartDate" value={startDate} on:change={loadAllStatistics} />
-            </div>
-            <div>
-                <label for="statEndDate">Конечная дата:</label>
-                <input type="datetime-local" id="statEndDate" value={endDate} on:change={loadAllStatistics} />
-            </div>
-            <div>
-                <label for="statPattern">Паттерн (опционально):</label>
-                <input
-                    type="text"
-                    id="statPattern"
-                    bind:value={selectedPattern}
-                    placeholder="Например, query/button_1"
-                    on:change={loadAllStatistics}
-                />
-            </div>
-            <button on:click={loadAllStatistics} class="update-button"> Обновить статистику </button>
+<section class="stat-section">
+    <h2>Общая статистика</h2>
+    <div class="input-group-container">
+        <div>
+            <label for="statStartDate">Начальная дата:</label>
+            <input type="date" id="statStartDate" bind:value={startDate} on:change={loadAllStatistics} />
         </div>
+        <div>
+            <label for="statEndDate">Конечная дата:</label>
+            <input type="date" id="statEndDate" bind:value={endDate} on:change={loadAllStatistics} />
+        </div>
+        <div>
+            <label for="statPattern">Паттерн (опционально):</label>
+            <input
+                type="text"
+                id="statPattern"
+                bind:value={selectedPattern}
+                placeholder="Например, query/button_1"
+                on:change={loadAllStatistics}
+            />
+        </div>
+        <button on:click={loadAllStatistics} class="update-button"> Обновить статистику </button>
+    </div>
 
+    <div class="summary-content-placeholder">
         {#if $error}
-            <p class="error-message">Ошибка: {$error}</p>
-        {:else if $loadingClickStatistics}
-            <p>Загрузка общей статистики...</p>
+            <p class="error-message transition-fade">Ошибка: {$error}</p>
+        {:else if $loadingClickStatistics || showLoadingMessage}
+            <p class="info-message transition-fade">Загрузка общей статистики...</p>
         {:else if $clickStatistics && $clickStatistics.count !== undefined}
-            <h3>Результаты:</h3>
-            <p><strong>Количество кликов:</strong> {$clickStatistics.count}</p>
-            <p><strong>Начальная дата:</strong> {new Date($clickStatistics.startDate).toLocaleString()}</p>
-            <p><strong>Конечная дата:</strong> {new Date($clickStatistics.endDate).toLocaleString()}</p>
-            <p><strong>Паттерн:</strong> {$clickStatistics.pattern || 'Все'}</p>
-        {:else}
-            <p>Общая статистика пока не загружена. Выберите даты и нажмите "Обновить статистику".</p>
-        {/if}
-    </section>
-
-    <section class="stat-section">
-        <h2>Статистика кликов по времени (Линейный график)</h2>
-        <div class="input-group-container">
-            <label for="interval">Интервал:</label>
-            <select id="interval" value={interval} on:change={loadAllStatistics}>
-                <option value="second">По секундам</option>
-                <option value="minute">По минутам</option>
-                <option value="hour">По часам</option>
-                <option value="day">По дням</option>
-                <option value="month">По месяцам</option>
-                <option value="15_seconds">По 15 секунд</option>
-                <option value="10_minutes">По 10 минут</option>
-                <option value="half_hour">По полчаса</option>
-                <option value="12_hours">По 12 часов</option>
-                <option value="3_days">По 3 дня</option>
-                <option value="week">По неделям</option>
-                <option value="4_months">По 4 месяца</option>
-            </select>
-        </div>
-        {#if $loadingTimeSeriesData}
-            <p>Загрузка данных для линейного графика...</p>
-        {:else if $error && aggregatedTimeSeriesData.length === 0}
-            <p class="error-message">Ошибка загрузки данных для линейного графика: {$error}</p>
-        {:else if aggregatedTimeSeriesData && aggregatedTimeSeriesData.length > 0}
-            <div class="chart-container">
-                <LineChart data={aggregatedTimeSeriesData} yAxisMax={lineChartYMax} />
+            <div class="stats-card transition-fade">
+                <p class="stat-value">{$clickStatistics.count}</p>
+                <p class="stat-label">Количество кликов</p>
             </div>
         {:else}
-            <p>Нет данных для отображения линейного графика за выбранный период.</p>
-        {/if}
-    </section>
-
-    <section class="stat-section">
-        <h2>Статистика кликов по паттернам (Круговой график)</h2>
-        <div class="input-group-container">
-            
-        </div>
-        {#if $loadingClicksByPatternData}
-            <p>Загрузка данных для кругового графика...</p>
-        {:else if $error && pieChartData.length === 0}
-            <p class="error-message">Ошибка загрузки данных для кругового графика: {$error}</p>
-        {:else if pieChartData && pieChartData.length > 0}
-            <div class="chart-container">
-                <PieChart data={pieChartData} />
-            </div>
-        {:else}
-            <p>
-                Нет данных для отображения кругового графика за выбранный период.
+            <p class="info-message transition-fade">
+                Общая статистика пока не загружена. Выберите даты и нажмите "Обновить статистику".
             </p>
         {/if}
-    </section>
+    </div>
+</section>
+
+<section class="stat-section">
+    <h2>Статистика кликов по времени (Линейный график)</h2>
+    <div class="input-group-container">
+        <label for="interval">Интервал:</label>
+        <select id="interval" bind:value={interval} on:change={loadAllStatistics}>
+            <option value="second">По секундам</option>
+            <option value="minute">По минутам</option>
+            <option value="hour">По часам</option>
+            <option value="day">По дням</option>
+            <option value="month">По месяцам</option>
+            <option value="15_seconds">По 15 секунд</option>
+            <option value="10_minutes">По 10 минут</option>
+            <option value="half_hour">По полчаса</option>
+            <option value="12_hours">По 12 часов</option>
+            <option value="3_days">По 3 дня</option>
+            <option value="week">По неделям</option>
+            <option value="4_months">По 4 месяца</option>
+        </select>
+    </div>
+    <div class="chart-container">
+        {#if $loadingTimeSeriesData || showLoadingMessage}
+            <p class="info-message transition-fade">Загрузка данных для линейного графика...</p>
+        {:else if $error && aggregatedTimeSeriesData.length === 0}
+            <p class="error-message transition-fade">Ошибка загрузки данных для линейного графика: {$error}</p>
+        {:else if aggregatedTimeSeriesData && aggregatedTimeSeriesData.length > 0}
+            <LineChart data={aggregatedTimeSeriesData} yAxisMax={lineChartYMax} />
+        {:else}
+            <p class="info-message transition-fade">Нет данных для отображения линейного графика за выбранный период.</p>
+        {/if}
+    </div>
+</section>
+
+<section class="stat-section">
+    <h2>Статистика кликов по паттернам (Круговой график)</h2>
+    <div class="input-group-container"></div>
+    <div class="chart-container">
+        {#if $loadingClicksByPatternData || showLoadingMessage}
+            <p class="info-message transition-fade">Загрузка данных для кругового графика...</p>
+        {:else if $error && pieChartData.length === 0}
+            <p class="error-message transition-fade">Ошибка загрузки данных для кругового графика: {$error}</p>
+        {:else if pieChartData && pieChartData.length > 0}
+            <PieChart data={pieChartData} />
+        {:else}
+            <p class="info-message transition-fade">Нет данных для отображения кругового графика за выбранный период.</p>
+        {/if}
+    </div>
+</section>
 
 <style>
-    section {
+    /* Глобальные переменные предполагаются, поэтому :root удален */
+
+    body {
+        background-color: var(--first-color);
+        color: var(--main-text);
+        font-family: 'Inter', sans-serif;
+    }
+
+    h1 {
+        text-align: center;
         margin-bottom: 2rem;
-        padding: 1rem;
-        border: 1px solid #ccc;
-        border-radius: 8px;
-        background-color: #f9f9f9;
-        color: black;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        color: var(--gray-text);
+        font-size: 2.5rem;
+    }
+
+    h2 {
+        color: var(--gray-text);
+        margin-bottom: 1.5rem;
+        font-size: 1.75rem;
+        border-bottom: 1px solid var(--border-gray);
+        padding-bottom: 0.5rem;
+    }
+
+    section {
+        align-self: stretch;
+        margin-bottom: 2.5rem;
+        padding: 2rem;
+        border: 1px solid var(--border-gray);
+        border-radius: 10px;
+        background-color: var(--first-color);
+        color: var(--main-text);
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        max-width: 1200px;
+        box-sizing: border-box;
     }
 
     .input-group-container {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 1.5rem;
+        align-items: end;
+    }
+
+    .input-group-container > div {
         display: flex;
-        flex-wrap: wrap;
-        gap: 1rem;
-        margin-bottom: 1rem;
-        align-items: center;
+        flex-direction: column;
     }
 
     label {
-        display: block;
-        margin-bottom: 0.25rem;
+        margin-bottom: 0.5rem;
         font-weight: bold;
+        color: var(--gray-text);
+        font-size: 0.95rem;
     }
 
-    input[type='datetime-local'],
+    input[type='date'],
     input[type='text'],
     select {
-        padding: 0.5rem;
-        border: 1px solid #ccc;
-        border-radius: 4px;
-        width: 180px;
+        padding: 0.75rem;
+        border: 1px solid var(--border-gray);
+        border-radius: 6px;
+        background-color: var(--first-color);
+        color: var(--main-text);
+        font-size: 1rem;
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    input[type='date']::-webkit-calendar-picker-indicator {
+        filter: invert(1);
     }
 
     .update-button {
-        padding: 0.5rem 1rem;
-        background-color: #007acc;
-        color: white;
+        padding: 0.75rem 1.5rem;
+        background-color: var(--action-button-color);
+        color: var(--main-text);
         border: none;
-        border-radius: 5px;
+        border-radius: 6px;
         cursor: pointer;
+        font-size: 1rem;
+        transition: background-color 0.3s ease;
+        align-self: flex-end;
     }
 
     .update-button:hover {
-        background-color: #005fa3 !important;
+        background-color: var(--action-button-hover-color);
+    }
+
+    .transition-fade {
+        opacity: 1;
+        transition: opacity 0.3s ease-in-out;
+    }
+
+    .loading-message,
+    .info-message {
+        background-color: var(--info-message-bg);
+        color: var(--main-text);
+        padding: 1rem;
+        border-radius: 6px;
+        margin-top: 1rem;
+        text-align: center;
+        border: 1px solid var(--border-gray);
     }
 
     .error-message {
-        color: red;
+        background-color: #631c26;
+        color: var(--main-text);
+        padding: 1rem;
+        border-radius: 6px;
+        margin-top: 1rem;
+        text-align: center;
+        border: 1px solid var(--decor-red);
     }
 
     .chart-container {
-        height: 300px;
+        height: 350px;
+        width: 100%;
+        margin-top: 1.5rem;
+        display: flex;
+        justify-content: center;
+        align-items: center;
     }
 
-    input[type='range'] {
-        flex-grow: 1;
-        margin-right: 0.5rem;
+    p {
+        color: var(--main-text);
     }
 
-    .slider-label {
-        min-width: 120px;
-        text-align: right;
+    p strong {
+        color: var(--decor-green);
+    }
+
+    .summary-content-placeholder {
+        height: 120px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+        transition: all 0.3s ease-in-out;
+    }
+
+    .stats-card {
+        background-color: var(--second-color);
+        border: 1px solid var(--border-gray);
+        border-radius: 8px;
+        padding: 1.5rem 2rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.5rem;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        max-width: fit-content;
+        margin: auto;
+        margin-bottom: 1rem;
+        margin-top: 1rem;
+    }
+
+    .stats-card .stat-value {
+        font-size: 3.5rem;
+        font-weight: bold;
+        color: var(--decor-green);
+        margin-bottom: 0.5rem;
+        line-height: 1;
+    }
+
+    .stats-card .stat-label {
+        font-size: 1.1rem;
+        color: var(--gray-text);
     }
 </style>
