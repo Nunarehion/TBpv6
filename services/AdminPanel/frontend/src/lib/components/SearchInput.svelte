@@ -56,8 +56,8 @@
 	.icon {
 		position: absolute;
 		right: 10px;
-		width: 20px;
-		height: 20px;
+		width: 1.25rem;
+		height: 1.25rem;
 		color: var(--gray-text);
 		pointer-events: none;
 		opacity: 0.5;

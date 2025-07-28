@@ -5,7 +5,7 @@ export const documents = writable([]);
 export const selectedCollection = writable(null);
 export const loadingCollections = writable(true);
 export const loadingDocuments = writable(false);
-export const error = writable(null);
+export const error = writable(null); // Ошибка остается глобальным стором, так как она может быть общей
 
 export const clickStatistics = writable(null);
 export const loadingClickStatistics = writable(false);
@@ -38,6 +38,9 @@ export const loadingImageDelete = writable(false);
 
 export const images = writable([]);
 export const loadingImages = writable(false);
+
+// УДАЛЕНЫ: startDate, endDate, interval, loadAllStatistics, registerLoadFunction
+// Эти переменные и функции теперь будут локальными для каждого компонента страницы.
 
 
 export async function loadCollections() {
@@ -158,7 +161,7 @@ export async function deleteDocument(name, id) {
                 errorBody = null;
             }
             console.error('Ошибка удаления:', res.status, errorBody);
-            throw new new Error(errorBody?.error || 'Ошибка при удалении документа');
+            throw new Error(errorBody?.error || 'Ошибка при удалении документа');
         }
 
         documents.update((docs) => docs.filter((d) => d._id !== id));
@@ -169,12 +172,12 @@ export async function deleteDocument(name, id) {
     }
 }
 
-export async function fetchClickStatistics(startDate, endDate, pattern = null) {
+export async function fetchClickStatistics(startDateParam, endDateParam, pattern = null) {
     loadingClickStatistics.set(true);
     clickStatistics.set(null);
     error.set(null);
     try {
-        let url = `/api/statistics/clicks?startDate=${startDate}&endDate=${endDate}`;
+        let url = `/api/statistics/clicks?startDate=${startDateParam}&endDate=${endDateParam}`;
         if (pattern) {
             url += `&pattern=${pattern}`;
         }
@@ -194,12 +197,12 @@ export async function fetchClickStatistics(startDate, endDate, pattern = null) {
     }
 }
 
-export async function fetchTimeSeriesClickStatistics(startDate, endDate, interval) {
+export async function fetchTimeSeriesClickStatistics(startDateParam, endDateParam, intervalParam) {
     loadingTimeSeriesData.set(true);
     timeSeriesData.set([]);
     error.set(null);
     try {
-        const url = `/api/statistics/clicks/time-series?startDate=${startDate}&endDate=${endDate}&interval=${interval}`;
+        const url = `/api/statistics/clicks/time-series?startDate=${startDateParam}&endDate=${endDateParam}&interval=${intervalParam}`;
         const res = await fetch(url);
         if (!res.ok) {
             const errData = await res.json();
@@ -216,12 +219,12 @@ export async function fetchTimeSeriesClickStatistics(startDate, endDate, interva
     }
 }
 
-export async function fetchClicksByPatternStatistics(startDate, endDate) {
+export async function fetchClicksByPatternStatistics(startDateParam, endDateParam) {
     loadingClicksByPatternData.set(true);
     clicksByPatternData.set([]);
     error.set(null);
     try {
-        const url = `/api/statistics/clicks/by-pattern?startDate=${startDate}&endDate=${endDate}`;
+        const url = `/api/statistics/clicks/by-pattern?startDate=${startDateParam}&endDate=${endDateParam}`;
         const res = await fetch(url);
         if (!res.ok) {
             const errData = await res.json();
@@ -268,12 +271,12 @@ export async function fetchHandlerPatterns() {
 }
 
 
-export async function fetchTotalUsersStatistics(startDate, endDate) {
+export async function fetchTotalUsersStatistics(startDateParam, endDateParam) {
     loadingTotalUsersStatistics.set(true);
     totalUsersStatistics.set(null);
     error.set(null);
     try {
-        const url = `/api/statistics/users/total?startDate=${startDate}&endDate=${endDate}`;
+        const url = `/api/statistics/users/total?startDate=${startDateParam}&endDate=${endDateParam}`;
         const res = await fetch(url);
         if (!res.ok) {
             const errData = await res.json();
@@ -291,12 +294,12 @@ export async function fetchTotalUsersStatistics(startDate, endDate) {
 }
 
 
-export async function fetchNewUsersTimeSeries(startDate, endDate, interval) {
+export async function fetchNewUsersTimeSeries(startDateParam, endDateParam, intervalParam) {
     loadingNewUsersTimeSeriesData.set(true);
     newUsersTimeSeriesData.set([]);
     error.set(null);
     try {
-        const url = `/api/statistics/users/new-over-time?startDate=${startDate}&endDate=${endDate}&interval=${interval}`;
+        const url = `/api/statistics/users/new-over-time?startDate=${startDateParam}&endDate=${endDateParam}&interval=${intervalParam}`;
         const res = await fetch(url);
         if (!res.ok) {
             const errData = await res.json();
@@ -314,12 +317,12 @@ export async function fetchNewUsersTimeSeries(startDate, endDate, interval) {
 }
 
 
-export async function fetchActiveUsersTimeSeries(startDate, endDate, interval) {
+export async function fetchActiveUsersTimeSeries(startDateParam, endDateParam, intervalParam) {
     loadingActiveUsersTimeSeriesData.set(true);
     activeUsersTimeSeriesData.set([]);
     error.set(null);
     try {
-        const url = `/api/statistics/users/active-over-time?startDate=${startDate}&endDate=${endDate}&interval=${interval}`;
+        const url = `/api/statistics/users/active-over-time?startDate=${startDateParam}&endDate=${endDateParam}&interval=${intervalParam}`;
         const res = await fetch(url);
         if (!res.ok) {
             const errData = await res.json();
@@ -337,12 +340,12 @@ export async function fetchActiveUsersTimeSeries(startDate, endDate, interval) {
 }
 
 
-export async function fetchMostActiveUsers(startDate, endDate, limit = 10) {
+export async function fetchMostActiveUsers(startDateParam, endDateParam, limit = 10) {
     loadingMostActiveUsersData.set(true);
     mostActiveUsersData.set([]);
     error.set(null);
     try {
-        const url = `/api/statistics/users/most-active?startDate=${startDate}&endDate=${endDate}&limit=${limit}`;
+        const url = `/api/statistics/users/most-active?startDate=${startDateParam}&endDate=${endDateParam}&limit=${limit}`;
         const res = await fetch(url);
         if (!res.ok) {
             const errData = await res.json();

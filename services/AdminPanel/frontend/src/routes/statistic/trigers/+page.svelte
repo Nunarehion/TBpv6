@@ -1,5 +1,5 @@
 <script>
-    import { onMount, getContext } from 'svelte';
+    import { onMount } from 'svelte';
     import {
         clickStatistics,
         loadingClickStatistics,
@@ -11,26 +11,61 @@
         loadingClicksByPatternData,
         fetchClicksByPatternStatistics,
         handlerPatterns,
-        fetchHandlerPatterns
+        fetchHandlerPatterns,
+        error
     } from '$lib/stores/db.js';
 
     import LineChart from '$lib/components/charts/LineChart.svelte';
     import PieChart from '$lib/components/charts/PieChart.svelte';
 
-    const {
-        loadAllStatistics,
-        registerLoadFunction,
-        error,
-        interval: sharedInterval
-    } = getContext('statsContext');
-
     let startDate = $state('');
     let endDate = $state('');
-    let interval = $state(sharedInterval);
+    let interval = $state('hour');
 
     let selectedPattern = $state('');
 
     let showLoadingMessage = $state(false);
+
+    const registeredLoadFunctions = [];
+
+    const registerLoadFunction = (func) => {
+        registeredLoadFunctions.push(func);
+    };
+
+    function getAdjustedStartDateIso(dateString) {
+        if (!dateString) return '';
+        const dt = new Date(dateString);
+        dt.setHours(0, 0, 0, 0);
+        return dt.toISOString();
+    }
+
+    function getAdjustedEndDateIso(dateString) {
+        if (!dateString) return '';
+        const dt = new Date(dateString);
+        dt.setHours(23, 59, 59, 999);
+        return dt.toISOString();
+    }
+
+    async function loadAllStatistics() {
+        error.set(null);
+
+        const startIso = getAdjustedStartDateIso(startDate);
+        const endIso = getAdjustedEndDateIso(endDate);
+
+        if (
+            !startIso ||
+            !endIso ||
+            isNaN(new Date(startIso).getTime()) ||
+            isNaN(new Date(endIso).getTime())
+        ) {
+            error.set('Пожалуйста, выберите корректные начальную и конечную даты.');
+            return;
+        }
+
+        for (const func of registeredLoadFunctions) {
+            await func(startIso, endIso, interval);
+        }
+    }
 
     onMount(async () => {
         const now = new Date();
@@ -41,7 +76,6 @@
         const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
         startDate = sevenDaysAgo.toISOString().slice(0, 10);
 
-        // Register load functions with a delay wrapper
         registerLoadFunction(async (startIso, endIso) => {
             await delayedLoad(loadClickStats, startIso, endIso, selectedPattern);
         });
@@ -56,119 +90,102 @@
         await loadAllStatistics();
     });
 
-    // Utility function to enforce a minimum loading display time
     async function delayedLoad(func, ...args) {
         showLoadingMessage = true;
         const startTime = Date.now();
         await func(...args);
         const elapsedTime = Date.now() - startTime;
-        const minDisplayTime = 300; // Minimum time loading message is shown in ms
+        const minDisplayTime = 300;
 
         if (elapsedTime < minDisplayTime) {
-            await new Promise(resolve => setTimeout(resolve, minDisplayTime - elapsedTime));
+            await new Promise((resolve) => setTimeout(resolve, minDisplayTime - elapsedTime));
         }
         showLoadingMessage = false;
     }
 
-    function getAdjustedEndDateIso(dateString) {
-        if (!dateString) return '';
-        const dt = new Date(dateString);
-        dt.setHours(23, 59, 59, 999);
-        return dt.toISOString();
-    }
-
     async function loadClickStats(startIso, endIso, pattern) {
         error.set(null);
-        const adjustedEndIso = getAdjustedEndDateIso(endIso);
-        if (
-            !startIso ||
-            !adjustedEndIso ||
-            isNaN(new Date(startIso).getTime()) ||
-            isNaN(new Date(adjustedEndIso).getTime())
-        ) {
-            error.set('Пожалуйста, выберите корректные начальную и конечную даты.');
-            return;
-        }
-        await fetchClickStatistics(startIso, adjustedEndIso, pattern || null);
+        await fetchClickStatistics(startIso, endIso, pattern || null);
     }
 
     async function loadTimeSeriesStats(startIso, endIso, currentInterval) {
         error.set(null);
-        const adjustedEndIso = getAdjustedEndDateIso(endIso);
-        if (
-            !startIso ||
-            !adjustedEndIso ||
-            isNaN(new Date(startIso).getTime()) ||
-            isNaN(new Date(adjustedEndIso).getTime())
-        ) {
-            error.set('Пожалуйста, выберите корректные начальную и конечную даты.');
-            return;
-        }
-
         let backendInterval = currentInterval;
         if (!['second', 'minute', 'hour', 'day', 'month'].includes(currentInterval)) {
             backendInterval = 'second';
         }
-
-        await fetchTimeSeriesClickStatistics(startIso, adjustedEndIso, backendInterval);
+        await fetchTimeSeriesClickStatistics(startIso, endIso, backendInterval);
     }
 
     async function loadClicksByPatternStats(startIso, endIso) {
         error.set(null);
-        const adjustedEndIso = getAdjustedEndDateIso(endIso);
-        if (
-            !startIso ||
-            !adjustedEndIso ||
-            isNaN(new Date(startIso).getTime()) ||
-            isNaN(new Date(adjustedEndIso).getTime())
-        ) {
-            error.set('Пожалуйста, выберите корректные начальную и конечную даты.');
-            return;
-        }
-        await fetchClicksByPatternStatistics(startIso, adjustedEndIso);
+        await fetchClicksByPatternStatistics(startIso, endIso);
     }
 
-    function aggregateData(data, customInterval) {
-        if (!data || data.length === 0) return [];
+    function generateFullDateRange(start, end, intervalType) {
+        const dates = [];
+        let currentDate = new Date(start);
+        const endDateObj = new Date(end);
 
-        const aggregated = {};
-        const intervalMs = {
-            '15_seconds': 15 * 1000,
-            '10_minutes': 10 * 60 * 1000,
-            half_hour: 30 * 60 * 1000,
-            '12_hours': 12 * 60 * 60 * 1000,
-            '3_days': 3 * 24 * 60 * 60 * 1000,
-            week: 7 * 24 * 60 * 60 * 1000,
-            '4_months': 4 * 30 * 24 * 60 * 60 * 1000
-        };
+        while (currentDate <= endDateObj) {
+            dates.push(new Date(currentDate));
 
-        const currentIntervalMs = intervalMs[customInterval];
-        if (!currentIntervalMs) {
-            return data;
-        }
-
-        data.forEach((item) => {
-            const itemTime = new Date(item.time).getTime();
-            const bucketStart = Math.floor(itemTime / currentIntervalMs) * currentIntervalMs;
-
-            if (!aggregated[bucketStart]) {
-                aggregated[bucketStart] = { time: new Date(bucketStart), count: 0 };
+            if (intervalType === 'second') {
+                currentDate.setSeconds(currentDate.getSeconds() + 1);
+            } else if (intervalType === 'minute') {
+                currentDate.setMinutes(currentDate.getMinutes() + 1);
+            } else if (intervalType === 'hour') {
+                currentDate.setHours(currentDate.getHours() + 1);
+            } else if (intervalType === 'day') {
+                currentDate.setDate(currentDate.getDate() + 1);
+            } else if (intervalType === 'month') {
+                currentDate.setMonth(currentDate.getMonth() + 1);
+            } else if (intervalType === '15_seconds') {
+                currentDate.setSeconds(currentDate.getSeconds() + 15);
+            } else if (intervalType === '10_minutes') {
+                currentDate.setMinutes(currentDate.getMinutes() + 10);
+            } else if (intervalType === 'half_hour') {
+                currentDate.setMinutes(currentDate.getMinutes() + 30);
+            } else if (intervalType === '12_hours') {
+                currentDate.setHours(currentDate.getHours() + 12);
+            } else if (intervalType === '3_days') {
+                currentDate.setDate(currentDate.getDate() + 3);
+            } else if (intervalType === 'week') {
+                currentDate.setDate(currentDate.getDate() + 7);
+            } else if (intervalType === '4_months') {
+                currentDate.setMonth(currentDate.getMonth() + 4);
+            } else {
+                currentDate.setDate(currentDate.getDate() + 1);
             }
-            aggregated[bucketStart].count += item.count;
-        });
-
-        return Object.values(aggregated).sort((a, b) => a.time.getTime() - b.time.getTime());
+        }
+        return dates;
     }
 
     let aggregatedTimeSeriesData = $derived.by(() => {
-        if (['second', 'minute', 'hour', 'day', 'month'].includes(interval)) {
-            return $timeSeriesData;
-        }
-        return aggregateData($timeSeriesData, interval);
-    });
+        const rawData = $timeSeriesData;
+        const currentInterval = interval;
 
-    let pieChartData = $derived.by(() => {
-        return $clicksByPatternData;
+        if (!startDate || !endDate || rawData.length === 0) {
+            return [];
+        }
+
+        const start = getAdjustedStartDateIso(startDate);
+        const end = getAdjustedEndDateIso(endDate);
+
+        const fullRange = generateFullDateRange(start, end, currentInterval);
+
+        const dataMap = new Map();
+        rawData.forEach(item => {
+            dataMap.set(new Date(item.time).toISOString(), item.count);
+        });
+
+        const result = fullRange.map(date => {
+            const isoString = date.toISOString();
+            const count = dataMap.get(isoString) || 0;
+            return { time: isoString, count: count };
+        });
+
+        return result;
     });
 
     let lineChartYMax = $derived.by(() => {
@@ -180,20 +197,76 @@
         const percentageBuffer = maxCount * 0.1;
         return Math.ceil(maxCount + buffer + percentageBuffer);
     });
+
+    let pieChartData = $derived.by(() => {
+        return $clicksByPatternData;
+    });
+
 </script>
 
 <h1>Статистика Бота</h1>
 
+
+
+<section class="stat-section">
+    <h2>Статистика кликов по времени (Линейный график)</h2>
+    <div class="input-group-container">
+        <label for="interval">Интервал:</label>
+        <select id="interval" bind:value={interval} on:change={loadAllStatistics}>
+            <option value="second">По секундам</option>
+            <option value="minute">По минутам</option>
+            <option value="hour">По часам</option>
+            <option value="day">По дням</option>
+            <option value="month">По месяцам</option>
+            <option value="15_seconds">По 15 секунд</option>
+            <option value="10_minutes">По 10 минут</option>
+            <option value="half_hour">По полчаса</option>
+            <option value="12_hours">По 12 часов</option>
+            <option value="3_days">По 3 дня</option>
+            <option value="week">По неделям</option>
+            <option value="4_months">По 4 месяца</option>
+        </select>
+    </div>
+    <div class="chart-container">
+        {#if $loadingTimeSeriesData || showLoadingMessage}
+            <p class="info-message transition-fade">Загрузка данных для линейного графика...</p>
+        {:else if $error && aggregatedTimeSeriesData.length === 0}
+            <p class="error-message transition-fade">
+                Ошибка загрузки данных для линейного графика: {$error}
+            </p>
+        {:else if aggregatedTimeSeriesData && aggregatedTimeSeriesData.length > 0}
+            <LineChart data={aggregatedTimeSeriesData} yAxisMax={lineChartYMax} />
+        {:else}
+            <p class="info-message transition-fade">
+                Нет данных для отображения линейного графика за выбранный период.
+            </p>
+        {/if}
+    </div>
+</section>
 <section class="stat-section">
     <h2>Общая статистика</h2>
     <div class="input-group-container">
         <div>
             <label for="statStartDate">Начальная дата:</label>
-            <input type="date" id="statStartDate" bind:value={startDate} on:change={loadAllStatistics} />
+            <input
+                type="date"
+                id="statStartDate"
+                bind:value={startDate}
+                on:change={loadAllStatistics}
+                min="2020-01-01"
+                max="2030-12-31"
+            />
         </div>
         <div>
             <label for="statEndDate">Конечная дата:</label>
-            <input type="date" id="statEndDate" bind:value={endDate} on:change={loadAllStatistics} />
+            <input
+                type="date"
+                id="statEndDate"
+                bind:value={endDate}
+                on:change={loadAllStatistics}
+                min="2020-01-01"
+                max="2030-12-31"
+            />
         </div>
         <div>
             <label for="statPattern">Паттерн (опционально):</label>
@@ -225,39 +298,6 @@
         {/if}
     </div>
 </section>
-
-<section class="stat-section">
-    <h2>Статистика кликов по времени (Линейный график)</h2>
-    <div class="input-group-container">
-        <label for="interval">Интервал:</label>
-        <select id="interval" bind:value={interval} on:change={loadAllStatistics}>
-            <option value="second">По секундам</option>
-            <option value="minute">По минутам</option>
-            <option value="hour">По часам</option>
-            <option value="day">По дням</option>
-            <option value="month">По месяцам</option>
-            <option value="15_seconds">По 15 секунд</option>
-            <option value="10_minutes">По 10 минут</option>
-            <option value="half_hour">По полчаса</option>
-            <option value="12_hours">По 12 часов</option>
-            <option value="3_days">По 3 дня</option>
-            <option value="week">По неделям</option>
-            <option value="4_months">По 4 месяца</option>
-        </select>
-    </div>
-    <div class="chart-container">
-        {#if $loadingTimeSeriesData || showLoadingMessage}
-            <p class="info-message transition-fade">Загрузка данных для линейного графика...</p>
-        {:else if $error && aggregatedTimeSeriesData.length === 0}
-            <p class="error-message transition-fade">Ошибка загрузки данных для линейного графика: {$error}</p>
-        {:else if aggregatedTimeSeriesData && aggregatedTimeSeriesData.length > 0}
-            <LineChart data={aggregatedTimeSeriesData} yAxisMax={lineChartYMax} />
-        {:else}
-            <p class="info-message transition-fade">Нет данных для отображения линейного графика за выбранный период.</p>
-        {/if}
-    </div>
-</section>
-
 <section class="stat-section">
     <h2>Статистика кликов по паттернам (Круговой график)</h2>
     <div class="input-group-container"></div>
@@ -265,18 +305,20 @@
         {#if $loadingClicksByPatternData || showLoadingMessage}
             <p class="info-message transition-fade">Загрузка данных для кругового графика...</p>
         {:else if $error && pieChartData.length === 0}
-            <p class="error-message transition-fade">Ошибка загрузки данных для кругового графика: {$error}</p>
+            <p class="error-message transition-fade">
+                Ошибка загрузки данных для кругового графика: {$error}
+            </p>
         {:else if pieChartData && pieChartData.length > 0}
             <PieChart data={pieChartData} />
         {:else}
-            <p class="info-message transition-fade">Нет данных для отображения кругового графика за выбранный период.</p>
+            <p class="info-message transition-fade">
+                Нет данных для отображения кругового графика за выбранный период.
+            </p>
         {/if}
     </div>
 </section>
 
 <style>
-    /* Глобальные переменные предполагаются, поэтому :root удален */
-
     body {
         background-color: var(--first-color);
         color: var(--main-text);

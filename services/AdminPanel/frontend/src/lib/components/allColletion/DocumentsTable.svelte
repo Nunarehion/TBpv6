@@ -242,7 +242,7 @@
 	}
 
 	.create-button:hover {
-		background-color: var(--action-button-hover-color);
+		background-color: #0e9f6e22;
 	}
 
 	.create-button .icon {

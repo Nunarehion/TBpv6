@@ -12,6 +12,7 @@
 		--action-button-hover-color: var(--blue-dark);
 		--info-message-bg: #4b5563;
 	}
+	
 html {
   font-family: "Inter", sans-serif;
   font-optical-sizing: auto;

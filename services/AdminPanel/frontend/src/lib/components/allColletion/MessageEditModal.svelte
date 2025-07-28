@@ -1,5 +1,5 @@
 <script>
-    import { createEventDispatcher, onMount } from 'svelte';
+    import { createEventDispatcher, onMount, tick } from 'svelte';
     import ToggleSwitch from '$lib/components/ToggleSwitch.svelte';
     import KeyboardEditModal from '$lib/components/allColletion/KeyboardEditModal.svelte';
 
@@ -9,6 +9,7 @@
 
     let editedDoc = $state({
         ...doc,
+        text: doc.text ? convertNewlinesToBr(doc.text) : '', 
         images: Array.isArray(doc.images) ? doc.images.join('\n') : '',
         keyboard_name: doc.keyboard_name || ''
     });
@@ -19,84 +20,54 @@
 
     let internalUpdate = false;
     let isRawHtmlMode = $state(false);
-
     let availableKeyboards = $state([]);
-    let loadingKeyboards = $state(true);
+    let loadingKeyboards = $state(true); 
     let errorKeyboards = $state(null);
 
-    let showKeyboardEditModal = $state(false);
-    let currentKeyboardForEdit = $state(null);
-    let keyboardEditModalColumns = $state([]);
+    let showKeyboardEditModal = $state(false);      
+    let currentKeyboardForEdit = $state(null);      
+    let keyboardEditModalColumns = ['name', 'buttons'];
 
-    function sanitizeForTelegram(html) {
-        const tempDiv = document.createElement('div');
-        tempDiv.innerHTML = html;
+    function convertNewlinesToBr(text) {
+        if (typeof text !== 'string') return '';
+        let processedText = text.replace(/&nbsp;/g, ' ');
+        processedText = processedText.replace(/\n/g, '<br>');
+        return processedText;
+    }
 
-        function processNode(node) {
-            const fragment = document.createDocumentFragment();
-            const children = Array.from(node.childNodes);
+    function normalizeHtmlForDatabase(html) {
+        if (typeof html !== 'string') return '';
 
-            for (const child of children) {
-                const processedChild = processNode(child);
-                if (processedChild) {
-                    fragment.appendChild(processedChild);
-                }
-            }
+        let result = html;
 
-            if (node.nodeType === Node.ELEMENT_NODE) {
-                const tagName = node.tagName.toLowerCase();
-                let newElement = null;
+        result = result.replace(/<br\s*\/?>/gi, '\n');
 
-                switch (tagName) {
-                    case 'b':
-                    case 'strong':
-                        newElement = document.createElement('b');
-                        break;
-                    case 'i':
-                    case 'em':
-                        newElement = document.createElement('i');
-                        break;
-                    case 'u':
-                        newElement = document.createElement('u');
-                        break;
-                    case 'a':
-                        newElement = document.createElement('a');
-                        if (node.hasAttribute('href')) {
-                            newElement.setAttribute('href', node.getAttribute('href'));
-                        }
-                        break;
-                    case 'code':
-                        newElement = document.createElement('code');
-                        break;
-                    case 'pre':
-                        newElement = document.createElement('pre');
-                        break;
-                    default:
-                        return fragment;
-                }
+        result = result.replace(/<\s*(p|div)\b[^>]*>(.*?)<\/\s*\1\s*>/gis, (match, tag, content) => {
+            let normalizedContent = content
+                                    .replace(/<br\s*\/?>/gi, '\n')
+                                    .replace(/&nbsp;/g, ' ')
+                                    .trim();
 
-                if ((tagName === 'pre' || tagName === 'code') && (fragment.childNodes.length === 0 || (fragment.childNodes.length === 1 && fragment.firstChild.tagName === 'BR'))) {
-                    return null;
-                }
+            return (normalizedContent ? normalizedContent : '') + '\n\n';
+        });
 
-                newElement.appendChild(fragment);
-                return newElement;
-            } else if (node.nodeType === Node.TEXT_NODE) {
-                return node.cloneNode(true);
-            }
-            return null;
-        }
+        const allowedTagsPattern = '(b|i|u|s|a|code|pre)';
+        result = result.replace(new RegExp(`<(?!\/?(${allowedTagsPattern})[^>]*?>)[^>]+>`, 'gi'), '');
+        result = result.replace(new RegExp(`<\/(?!\/?(${allowedTagsPattern})[^>]*?>)[^>]+>`, 'gi'), '');
 
-        const resultFragment = processNode(tempDiv);
-        const outputDiv = document.createElement('div');
-        outputDiv.appendChild(resultFragment);
-        return outputDiv.innerHTML;
+        result = result.replace(/&nbsp;/g, ' ');
+        result = result.replace(/\r/g, '');
+        result = result.replace(/ +/g, ' ');
+        result = result.trim();
+
+        return result;
     }
 
     function formatText(command, value = null) {
         if (contentEditableDiv) {
             contentEditableDiv.focus();
             document.execCommand(command, false, value);
+            editedDoc.text = contentEditableDiv.innerHTML;
             contentEditableDiv.dispatchEvent(new Event('input'));
         }
     }
@@ -130,6 +101,7 @@
                     selection.addRange(newRange);
                 }
             }
+            editedDoc.text = contentEditableDiv.innerHTML;
             contentEditableDiv.dispatchEvent(new Event('input'));
         }
     }
@@ -152,6 +124,7 @@
                     selection.addRange(newRange);
                 }
             }
+            editedDoc.text = contentEditableDiv.innerHTML;
             contentEditableDiv.dispatchEvent(new Event('input'));
         }
     }
@@ -160,9 +133,9 @@
         formatText('removeFormat');
     }
 
-    function handleInput() {
+    function handleInputEvent() {
         if (!internalUpdate) {
-            editedDoc.text = sanitizeForTelegram(contentEditableDiv.innerHTML);
+            editedDoc.text = contentEditableDiv.innerHTML;
         }
     }
 
@@ -170,20 +143,18 @@
         editedDoc.text = event.target.value;
     }
 
-    function handleImagesInput(event) {
-        editedDoc.images = event.target.value.split('\n').filter(Boolean);
-    }
+    async function handleToggleChange(event) {
+        isRawHtmlMode = event.detail; 
 
-    function handleToggleChange(event) {
-        isRawHtmlMode = event.detail;
         if (isRawHtmlMode) {
             if (contentEditableDiv) {
-                editedDoc.text = sanitizeForTelegram(contentEditableDiv.innerHTML);
+                editedDoc.text = normalizeHtmlForDatabase(contentEditableDiv.innerHTML);
             }
         } else {
+            await tick(); 
             if (contentEditableDiv) {
-                internalUpdate = true;
-                contentEditableDiv.innerHTML = editedDoc.text;
+                internalUpdate = true; 
+                contentEditableDiv.innerHTML = convertNewlinesToBr(editedDoc.text);
                 internalUpdate = false;
             }
         }
@@ -204,7 +175,6 @@
                 editedDoc.keyboard_name = '';
             }
         } catch (error) {
-            console.error('Error loading available keyboards:', error);
             errorKeyboards = error.message;
         } finally {
             loadingKeyboards = false;
@@ -213,14 +183,13 @@
 
     function openKeyboardEdit() {
         if (editedDoc.keyboard_name) {
-            currentKeyboardForEdit = availableKeyboards.find(kb => kb.name === editedDoc.keyboard_name);
+            currentKeyboardForEdit = availableKeyboards.find((kb) => kb.name === editedDoc.keyboard_name);
             if (!currentKeyboardForEdit) {
                 currentKeyboardForEdit = { name: editedDoc.keyboard_name, buttons: [] };
             }
         } else {
             currentKeyboardForEdit = { name: '', buttons: [] };
         }
-        keyboardEditModalColumns = ['name', 'buttons'];
         showKeyboardEditModal = true;
     }
 
@@ -231,7 +200,6 @@
             const method = updatedKeyboard._id ? 'PUT' : 'POST';
             const url = updatedKeyboard._id ? `/api/keyboards/${updatedKeyboard._id}` : '/api/keyboards';
 
-            // Исключаем _id из данных, отправляемых в теле запроса
             const { _id, ...dataToSend } = updatedKeyboard;
 
             const response = await fetch(url, {
@@ -239,7 +207,7 @@
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify(dataToSend) // Отправляем данные БЕЗ _id
+                body: JSON.stringify(dataToSend)
             });
 
             if (!response.ok) {
@@ -248,7 +216,7 @@
             }
 
             const savedKeyboardResponse = await response.json();
-            const finalSavedKeyboard = updatedKeyboard._id ? updatedKeyboard : savedKeyboardResponse; // Если это PUT, используем updatedKeyboard, иначе результат POST
+            const finalSavedKeyboard = updatedKeyboard._id ? updatedKeyboard : savedKeyboardResponse;
 
             await fetchAvailableKeyboards();
 
@@ -257,9 +225,7 @@
             } else {
                 editedDoc.keyboard_name = '';
             }
-
         } catch (error) {
-            console.error('Error saving keyboard to backend:', error);
             alert(`Ошибка сохранения клавиатуры: ${error.message}`);
         }
 
@@ -273,7 +239,7 @@
     }
 
     onMount(() => {
-        if (contentEditableDiv && editedDoc.text && !isRawHtmlMode) {
+        if (contentEditableDiv && !isRawHtmlMode) {
             internalUpdate = true;
             contentEditableDiv.innerHTML = editedDoc.text;
             internalUpdate = false;
@@ -282,18 +248,24 @@
     });
 
     $effect(() => {
-        if (!isRawHtmlMode && contentEditableDiv && editedDoc.text !== sanitizeForTelegram(contentEditableDiv.innerHTML)) {
+        if (!isRawHtmlMode && contentEditableDiv && editedDoc.text !== contentEditableDiv.innerHTML) {
             internalUpdate = true;
-            contentEditableDiv.innerHTML = editedDoc.text;
+            contentEditableDiv.innerHTML = convertNewlinesToBr(editedDoc.text);
             internalUpdate = false;
         }
     });
 
     function handleSave() {
         const docToSave = { ...editedDoc };
+
+        if (typeof docToSave.text === 'string') {
+            docToSave.text = normalizeHtmlForDatabase(docToSave.text);
+        }
+
         if (typeof docToSave.images === 'string') {
             docToSave.images = docToSave.images.split('\n').filter(Boolean);
         }
+
         dispatch('save', docToSave);
     }
 
@@ -312,15 +284,19 @@
                         <label for={col}>{col}:</label>
                         {#if col === 'text'}
                             <div class="toolbar">
-                                <button type="button" on:click={() => formatText('bold')} title="Жирный (Bold)"><b>B</b></button>
-                                <button type="button" on:click={() => formatText('italic')} title="Курсив (Italic)"><i>I</i></button>
-                                <button type="button" on:click={() => formatText('underline')} title="Подчеркнутый (Underline)"><u>U</u></button>
-                                <button type="button" on:click={createLink} title="Ссылка (Link)">🔗</button>
-                                <button type="button" on:click={unlinkText} title="Отменить ссылку (Unlink)">🔗&#x20E0;</button>
-                                <button type="button" on:click={insertMonospace} title="Моноширинный (Monospace)"><code>&lt;/&gt;</code></button>
-                                <button type="button" on:click={insertPreformatted} title="Блок кода (Preformatted)">{"<pre>"}</button>
-                                <button type="button" on:click={clearFormatting} title="Очистить форматирование">🚫</button>
-                               <ToggleSwitch checked={isRawHtmlMode} on:change={handleToggleChange} label="Режим разметки" />
+                                <button type="button" on:click={() => formatText('bold')}><b>B</b></button>
+                                <button type="button" on:click={() => formatText('italic')}><i>I</i></button>
+                                <button type="button" on:click={() => formatText('underline')}><u>U</u></button>
+                                <button type="button" on:click={createLink}>🔗</button>
+                                <button type="button" on:click={unlinkText}>🔗&#x20E0;</button>
+                                <button type="button" on:click={insertMonospace}><code>&lt;/&gt;</code></button>
+                                <button type="button" on:click={insertPreformatted}>{'<pre>'}</button>
+                                <button type="button" on:click={clearFormatting}>🚫</button>
+                                <ToggleSwitch
+                                    checked={isRawHtmlMode}
+                                    on:change={handleToggleChange}
+                                    label="Режим разметки"
+                                />
                             </div>
                             {#if isRawHtmlMode}
                                 <textarea
@@ -329,13 +305,14 @@
                                     class="raw-html-editor"
                                     on:input={handleRawHtmlInput}
                                     rows="10"
+                                    placeholder="Введите HTML-разметку"
                                 ></textarea>
                             {:else}
                                 <div
                                     bind:this={contentEditableDiv}
                                     contenteditable="true"
                                     class="text-editor"
-                                    on:input={handleInput}
+                                    on:input={handleInputEvent}
                                 ></div>
                             {/if}
                         {:else if col === 'images'}
@@ -362,7 +339,9 @@
                                     {/if}
                                 </select>
                                 <button type="button" on:click={openKeyboardEdit} class="edit-keyboard-button">
-                                    {editedDoc.keyboard_name ? 'Редактировать клавиатуру' : 'Создать/Редактировать клавиатуру'}
+                                    {editedDoc.keyboard_name
+                                        ? 'Редактировать клавиатуру'
+                                        : 'Создать/Редактировать клавиатуру'}
                                 </button>
                             </div>
                         {:else}
@@ -432,7 +411,7 @@
         color: var(--main-text);
     }
 
-    .form-group input[type="text"],
+    .form-group input[type='text'],
     .images-editor {
         width: 100%;
         padding: 0.75rem;
@@ -457,7 +436,7 @@
     }
 
     .toolbar button {
-        background-color: var(--action-button-color);
+        background: none;
         color: white;
         border: none;
         padding: 0.5rem 0.8rem;
@@ -469,7 +448,6 @@
     }
 
     .toolbar button:hover {
-        background-color: var(--action-button-hover-color);
     }
 
     .text-editor {
@@ -501,41 +479,6 @@
         font-size: 0.9rem;
         outline: none;
         resize: vertical;
-    }
-
-    .text-editor b,
-    .text-editor strong {
-        font-weight: bold !important;
-    }
-
-    .text-editor i,
-    .text-editor em {
-        font-style: italic !important;
-    }
-
-    .text-editor u {
-        text-decoration: underline !important;
-    }
-
-    .text-editor a {
-        color: var(--action-button-color) !important;
-        text-decoration: underline !important;
-    }
-
-    .text-editor code {
-        font-family: monospace !important;
-        background-color: #e0e0e0 !important;
-        padding: 2px 4px !important;
-        border-radius: 3px !important;
-    }
-
-    .text-editor pre {
-        font-family: monospace !important;
-        background-color: #e0e0e0 !important;
-        padding: 10px !important;
-        border-radius: 5px !important;
-        white-space: pre-wrap !important;
-        word-break: break-all !important;
     }
 
     .keyboard-selection-group {
@@ -582,7 +525,9 @@
         border-radius: 8px;
         cursor: pointer;
         font-size: 1rem;
-        transition: background-color 0.2s ease, color 0.2s ease;
+        transition:
+            background-color 0.2s ease,
+            color 0.2s ease;
     }
 
     .save-button {
