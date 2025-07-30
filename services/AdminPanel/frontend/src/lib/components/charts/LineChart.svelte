@@ -10,12 +10,11 @@
     let canvas;
     let chartInstance = null;
 
-    // Define colors using CSS custom properties for consistency
-    const mainTextColor = getComputedStyle(document.documentElement).getPropertyValue('--main-text').trim() || '#ffffff';
-    const grayTextColor = getComputedStyle(document.documentElement).getPropertyValue('--gray-text').trim() || '#9ca3af';
-    const blueColor = getComputedStyle(document.documentElement).getPropertyValue('--blue').trim() || '#1a56db';
-    const borderColor = getComputedStyle(document.documentElement).getPropertyValue('--border-gray').trim() || '#4b556399';
-    const secondColor = getComputedStyle(document.documentElement).getPropertyValue('--second-color').trim() || '#374151';
+    const mainTextColor = getComputedStyle(document.documentElement).getPropertyValue('--main-text').trim();
+    const grayTextColor = getComputedStyle(document.documentElement).getPropertyValue('--gray-text').trim();
+    const blueColor = getComputedStyle(document.documentElement).getPropertyValue('--blue').trim();
+    const borderColor = getComputedStyle(document.documentElement).getPropertyValue('--border-gray').trim();
+    const secondColor = getComputedStyle(document.documentElement).getPropertyValue('--second-color').trim();
 
 
     function renderChart() {
@@ -43,7 +42,7 @@
                     label: label,
                     data: counts,
                     borderColor: blueColor,
-                    backgroundColor: `rgba(${parseInt(blueColor.slice(1, 3), 16)}, ${parseInt(blueColor.slice(3, 5), 16)}, ${parseInt(blueColor.slice(5, 7), 16)}, 0.2)`, // Dynamic rgba from hex
+                    backgroundColor: `rgba(${parseInt(blueColor.slice(1, 3), 16)}, ${parseInt(blueColor.slice(3, 5), 16)}, ${parseInt(blueColor.slice(5, 7), 16)}, 0.2)`,
                     fill: true,
                     tension: 0.3
                 }]
@@ -55,7 +54,7 @@
                     title: {
                         display: true,
                         text: title,
-                        color: grayTextColor, // Using CSS variable for chart title color
+                        color: grayTextColor,
                         font: {
                             size: 16
                         }
@@ -69,28 +68,28 @@
                         title: {
                             display: true,
                             text: 'Время',
-                            color: grayTextColor // Using CSS variable for X-axis title color
+                            color: grayTextColor
                         },
                         ticks: {
-                            color: mainTextColor // Using CSS variable for X-axis tick color
+                            color: mainTextColor
                         },
                         grid: {
-                            color: borderColor // Using CSS variable for X-axis grid color
+                            color: borderColor
                         }
                     },
                     y: {
                         title: {
                             display: true,
                             text: 'Количество',
-                            color: grayTextColor // Using CSS variable for Y-axis title color
+                            color: grayTextColor
                         },
                         beginAtZero: true,
                         max: yAxisMax,
                         ticks: {
-                            color: mainTextColor // Using CSS variable for Y-axis tick color
+                            color: mainTextColor
                         },
                         grid: {
-                            color: borderColor // Using CSS variable for Y-axis grid color
+                            color: borderColor
                         }
                     }
                 }
@@ -112,8 +111,6 @@
 </div>
 
 <style>
-
-
     .chart-wrapper {
         width: 100%;
         height: 350px;

@@ -35,22 +35,9 @@
 			background-color 0.2s,
 			border-color 0.2s;
 	}
-	/* 
-	.checkbox-wrapper input[type='checkbox']:checked {
-		background-color: #007acc;
-		border-color: #007acc;
-	} */
 
 	.checkbox-wrapper input[type='checkbox']:checked::after {
 		content: '';
-		/* position: absolute;
-		left: 6px;
-		top: 2px;
-		width: 6px;
-		height: 12px;
-		border: solid white;
-		border-width: 0 3px 3px 0;
-		transform: rotate(45deg); */
 	}
 
 	.checkbox-wrapper input[type='checkbox']:disabled {

@@ -97,6 +97,10 @@
 	<div class="table-container">
 		<div class="tools-panel">
 			<SearchInput on:search={handleSearchInput} />
+			<button class="create-button" on:click={onAddClick}
+				><svg class="icon"><use href="/sprite.svg#circle-plus"></use></svg>
+				<span>Добавить</span></button
+			>
 		</div>
 
 		<div class="table-wrapper">
@@ -132,13 +136,6 @@
 				</tbody>
 			</table>
 		</div>
-
-		<div class="create-button-wrap">
-			<button class="create-button" on:click={onAddClick}
-				><svg class="icon"><use href="/sprite.svg#circle-plus"></use></svg>
-				<span>Добавить</span></button
-			>
-		</div>
 	</div>
 {/if}
 
@@ -155,6 +152,8 @@
 	}
 
 	.tools-panel {
+		display: flex;
+		justify-content: space-between;
 		padding: 1rem;
 		background: var(--first-color);
 		border-bottom: 1px solid var(--border-gray);

@@ -35,7 +35,7 @@
 	documents={$documents}
 	loading={$loadingDocuments}
 	selectedCollection={collectionName}
-	displayFields={['pattern', 'created_at', 'message_name']}
+	displayFields={['pattern', 'message_name']}
 	orderFields={['pattern', 'message_name', 'created_at']}
 	on:save={(e) => handleSave(e.detail)}
 	on:add={(e) => handleAdd(e.detail)}

@@ -49,7 +49,6 @@
 				callback_data: buttonDoc.callback_data || ''
 			}));
 		} catch (error) {
-			console.error('Error loading available buttons:', error);
 			errorAvailableButtons = error.message;
 		} finally {
 			loadingAvailableButtons = false;
@@ -90,25 +89,99 @@
 		if (!draggedButton) return;
 
 		let newButtons = JSON.parse(JSON.stringify(editableDoc.buttons));
+		const buttonToAdd = { id: draggedButton.id };
+
+		let sourceRowWasRemoved = false;
+		let originalDraggedButtonSourceRow = draggedButtonSourceRow;
 
 		if (!draggedButtonIsNew && draggedButtonSourceRow !== -1 && draggedButtonSourceIndex !== -1) {
-			newButtons[draggedButtonSourceRow].splice(draggedButtonSourceIndex, 1);
-			if (newButtons[draggedButtonSourceRow].length === 0) {
-				newButtons.splice(newButtons[draggedButtonSourceRow], 1);
+			if (
+				newButtons[draggedButtonSourceRow] &&
+				newButtons[draggedButtonSourceRow][draggedButtonSourceIndex] !== undefined
+			) {
+				newButtons[draggedButtonSourceRow].splice(draggedButtonSourceIndex, 1);
+				if (newButtons[draggedButtonSourceRow].length === 0) {
+					newButtons.splice(draggedButtonSourceRow, 1);
+					sourceRowWasRemoved = true;
+				}
 			}
 		}
 
-		const buttonToAdd = { id: draggedButton.id };
+		if (sourceRowWasRemoved && originalDraggedButtonSourceRow < targetRowIdx) {
+			targetRowIdx--;
+		}
 
 		if (targetRowIdx === -1) {
 			newButtons.push([buttonToAdd]);
-		} else if (targetBtnIdx === -1) {
-			if (!newButtons[targetRowIdx]) {
-				newButtons[targetRowIdx] = [];
-			}
-			newButtons[targetRowIdx].push(buttonToAdd);
 		} else {
-			newButtons[targetRowIdx].splice(targetBtnIdx, 0, buttonToAdd);
+			if (newButtons[targetRowIdx] === undefined) {
+				if (targetRowIdx >= 0 && targetRowIdx <= newButtons.length) {
+					newButtons.splice(targetRowIdx, 0, []);
+				} else {
+					newButtons.push([]);
+					targetRowIdx = newButtons.length - 1;
+				}
+			}
+
+			if (targetBtnIdx === -1) {
+				newButtons[targetRowIdx].push(buttonToAdd);
+			} else {
+				if (targetBtnIdx >= 0 && targetBtnIdx <= newButtons[targetRowIdx].length) {
+					newButtons[targetRowIdx].splice(targetBtnIdx, 0, buttonToAdd);
+				} else {
+					newButtons[targetRowIdx].push(buttonToAdd);
+				}
+			}
+		}
+
+		editableDoc.buttons = newButtons;
+		draggedButton = null;
+		draggedButtonSourceRow = null;
+		draggedButtonSourceIndex = null;
+		draggedButtonIsNew = false;
+	}
+
+	function handleDropOnAddRow(event) {
+		event.preventDefault();
+		if (!draggedButton) return;
+
+		let newButtons = JSON.parse(JSON.stringify(editableDoc.buttons));
+		const buttonToAdd = { id: draggedButton.id };
+
+		if (!draggedButtonIsNew && draggedButtonSourceRow !== -1 && draggedButtonSourceIndex !== -1) {
+			if (
+				newButtons[draggedButtonSourceRow] &&
+				newButtons[draggedButtonSourceRow][draggedButtonSourceIndex] !== undefined
+			) {
+				newButtons[draggedButtonSourceRow].splice(draggedButtonSourceIndex, 1);
+				if (newButtons[draggedButtonSourceRow].length === 0) {
+					newButtons.splice(draggedButtonSourceRow, 1);
+				}
+			}
+		}
+
+		newButtons.push([buttonToAdd]);
+		editableDoc.buttons = newButtons;
+
+		draggedButton = null;
+		draggedButtonSourceRow = null;
+		draggedButtonSourceIndex = null;
+		draggedButtonIsNew = false;
+	}
+
+	function handleDropOnAvailableButtons(event) {
+		event.preventDefault();
+		if (!draggedButton || draggedButtonIsNew || draggedButtonSourceRow === -1) return;
+
+		let newButtons = JSON.parse(JSON.stringify(editableDoc.buttons));
+		if (
+			newButtons[draggedButtonSourceRow] &&
+			newButtons[draggedButtonSourceRow][draggedButtonSourceIndex] !== undefined
+		) {
+			newButtons[draggedButtonSourceRow].splice(draggedButtonSourceIndex, 1);
+			if (newButtons[draggedButtonSourceRow].length === 0) {
+				newButtons.splice(draggedButtonSourceRow, 1);
+			}
 		}
 
 		editableDoc.buttons = newButtons;
@@ -127,13 +200,13 @@
 		editableDoc.buttons = newButtons;
 	}
 
-	function addNewRow() {
-		editableDoc.buttons = [...editableDoc.buttons, []];
-	}
+	function mergeRowWithPrevious(rowIdx) {
+		if (rowIdx === 0) return;
 
-	function deleteRow(rowIdx) {
 		let newButtons = JSON.parse(JSON.stringify(editableDoc.buttons));
-		newButtons.splice(rowIdx, 1);
+		const rowToMerge = newButtons.splice(rowIdx, 1)[0];
+		newButtons[rowIdx - 1] = [...newButtons[rowIdx - 1], ...rowToMerge];
+
 		editableDoc.buttons = newButtons;
 	}
 
@@ -178,22 +251,10 @@
 			newButtonText = '';
 			newButtonCallbackData = '';
 		} catch (error) {
-			console.error('Error creating new button:', error);
 			newButtonError = error.message;
 		} finally {
 			creatingNewButton = false;
 		}
-	}
-
-	function addButtonToFirstRow(button) {
-		let newButtons = JSON.parse(JSON.stringify(editableDoc.buttons));
-
-		if (newButtons.length === 0) {
-			newButtons.push([]);
-		}
-		newButtons[0].push({ id: button.id });
-
-		editableDoc.buttons = newButtons;
 	}
 </script>
 
@@ -251,31 +312,37 @@
 									Перетащите кнопки сюда, чтобы добавить в эту строку
 								</div>
 							{/if}
-							{#if editableDoc.buttons.length > 1}
-								<button type="button" class="delete-row-button" on:click={() => deleteRow(rowIdx)}>
-									Удалить строку
+							{#if editableDoc.buttons.length > 1 && rowIdx > 0}
+								<button
+									type="button"
+									class="merge-row-button"
+									on:click={() => mergeRowWithPrevious(rowIdx)}
+								>
+									Слить с предыдущей строкой
 								</button>
 							{/if}
 						</div>
 					{/each}
-					<button type="button" on:click={addNewRow} class="add-row-button"
-						>+ Добавить строку</button
-					>
+					<div class="add-row-drop-zone" on:dragover={handleDragOver} on:drop={handleDropOnAddRow}>
+						Перетащите кнопку сюда, чтобы создать новую строку
+					</div>
 					{#if editableDoc.buttons.length === 0}
 						<div
 							class="empty-keyboard-drop-target"
 							on:dragover={handleDragOver}
 							on:drop={(e) => handleDrop(e, -1)}
-						>
-							Перетащите кнопки сюда, чтобы начать новую строку
-						</div>
+						></div>
 					{/if}
 				</div>
 			</div>
 
 			<div class="form-group available-buttons-section">
 				<label>Доступные кнопки:</label>
-				<div class="available-buttons-list">
+				<div
+					class="available-buttons-list"
+					on:dragover={handleDragOver}
+					on:drop={handleDropOnAvailableButtons}
+				>
 					{#if loadingAvailableButtons}
 						<p>Загрузка доступных кнопок...</p>
 					{:else if errorAvailableButtons}
@@ -287,7 +354,6 @@
 								class="available-button"
 								draggable="true"
 								on:dragstart={(e) => handleDragStart(e, button, -1, -1, true)}
-								on:click={() => addButtonToFirstRow(button)}
 							>
 								<span>{buttonData.text}</span>
 								<span class="callback-data-display">{buttonData.callback_data}</span>
@@ -470,27 +536,32 @@
 	}
 
 	.keyboard-button {
-		background-color: var(--action-button-color);
-		color: white;
-		padding: 0.6rem 1rem;
-		border-radius: 5px;
-		cursor: grab;
 		display: flex;
 		flex-direction: column;
 		align-items: flex-start;
+		background-color: var(--action-button-color);
+		color: white;
+		padding: 0.6rem 1rem;
+		padding-right: 2rem;
+		border-radius: 5px;
+		cursor: grab;
 		gap: 0.2rem;
 		user-select: none;
 		position: relative;
 		white-space: nowrap;
 		overflow: hidden;
 		text-overflow: ellipsis;
-		max-width: 150px;
 		font-size: 0.9rem;
 	}
 	.keyboard-button:active {
 		cursor: grabbing;
 	}
-
+	.keyboard-button span {
+		max-width: 10rem;
+		display: block;
+		text-overflow: ellipsis;
+		overflow: hidden;
+	}
 	.keyboard-button span:first-child {
 		font-weight: bold;
 	}
@@ -520,23 +591,29 @@
 		color: var(--decor-red);
 	}
 
-	.add-row-button {
-		background-color: var(--blue);
-		color: white;
-		border: none;
-		padding: 0.5rem 1rem;
+	.add-row-drop-zone {
+		background-color: rgba(var(--decor-green-rgb), 0.2);
+		color: var(--decor-green);
+		border: 1px dashed var(--decor-green);
 		border-radius: 5px;
-		cursor: pointer;
+		padding: 0.8rem 1rem;
 		margin-top: 0.5rem;
-		align-self: flex-start;
+		text-align: center;
+		cursor: default;
+		user-select: none;
+		font-weight: bold;
+		transition:
+			background-color 0.2s ease,
+			border-color 0.2s ease;
 	}
 
-	.add-row-button:hover {
-		background-color: var(--blue-dark);
+	.add-row-drop-zone:hover {
+		background-color: rgba(var(--decor-green-rgb), 0.3);
+		border-color: #218838;
 	}
 
-	.delete-row-button {
-		background-color: var(--decor-red);
+	.merge-row-button {
+		background-color: #f0ad4e;
 		color: white;
 		border: none;
 		padding: 0.4rem 0.8rem;
@@ -545,8 +622,8 @@
 		margin-left: auto;
 		font-size: 0.85rem;
 	}
-	.delete-row-button:hover {
-		background-color: #cc0000;
+	.merge-row-button:hover {
+		background-color: #ec971f;
 	}
 
 	.available-buttons-section {
@@ -590,9 +667,11 @@
 	.available-button:active {
 		cursor: grabbing;
 	}
-
-	.available-button span:first-child {
-		font-weight: bold;
+	.available-button span {
+		max-width: 10rem;
+		display: block;
+		text-overflow: ellipsis;
+		overflow: hidden;
 	}
 
 	.new-button-creator {

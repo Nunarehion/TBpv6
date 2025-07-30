@@ -5,7 +5,7 @@ export const documents = writable([]);
 export const selectedCollection = writable(null);
 export const loadingCollections = writable(true);
 export const loadingDocuments = writable(false);
-export const error = writable(null); // Ошибка остается глобальным стором, так как она может быть общей
+export const error = writable(null);
 
 export const clickStatistics = writable(null);
 export const loadingClickStatistics = writable(false);
@@ -38,10 +38,6 @@ export const loadingImageDelete = writable(false);
 
 export const images = writable([]);
 export const loadingImages = writable(false);
-
-// УДАЛЕНЫ: startDate, endDate, interval, loadAllStatistics, registerLoadFunction
-// Эти переменные и функции теперь будут локальными для каждого компонента страницы.
-
 
 export async function loadCollections() {
     loadingCollections.set(true);
