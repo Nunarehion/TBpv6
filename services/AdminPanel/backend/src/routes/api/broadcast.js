@@ -16,7 +16,7 @@ router.post('/', async (req, res, next) => {
     console.log(`Published broadcast message for '${message_name}' to Redis channel '${BROADCAST_CHANNEL}'`);
     res.json({ success: true, message: 'Запрос на рассылку отправлен.' });
   } catch (err) {
-    next(err); // Передаем ошибку
+    next(err);
   }
 });
 

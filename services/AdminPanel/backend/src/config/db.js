@@ -12,4 +12,4 @@ export const getCollection = (collectionName) => {
   return mongoose.connection.db.collection(collectionName);
 };
 
-export default mongoose; // Экспортируем mongoose для использования в других модулях, если нужно
+export default mongoose;

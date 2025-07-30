@@ -14,13 +14,11 @@ def get_redis_connection():
     """
     try:
         r = redis.Redis(host='redis', port=6379, decode_responses=True, socket_connect_timeout=1)
-        # Проверяем подключение
         r.ping()
         logger.debug("Успешное подключение к Redis.")
         return r
     except redis.exceptions.ConnectionError as e:
         logger.error(f"Не удалось подключиться к Redis: {e}")
-        # Попробуем localhost как запасной вариант, если 'redis' не работает
         try:
             r = redis.Redis(host='localhost', port=6379, decode_responses=True, socket_connect_timeout=1)
             r.ping()
@@ -28,8 +26,7 @@ def get_redis_connection():
             return r
         except redis.exceptions.ConnectionError as e_local:
             logger.error(f"Не удалось подключиться к Redis через localhost: {e_local}")
-            raise # Повторно выбрасываем ошибку, если ни один вариант не сработал
-
+            raise
 def wMessage(key, message):
     """
     Записывает JSON-сообщение в Redis по указанному ключу.
@@ -70,7 +67,6 @@ async def start_redis_listener(channel: str, handler_func, loop: asyncio.Abstrac
                     try:
                         data = json.loads(message['data'])
                         logger.info(f"Получено сообщение из Redis канала '{channel}': {data}")
-                        # Запускаем handler_func в основном цикле событий
                         asyncio.run_coroutine_threadsafe(handler_func(data), loop)
                     except json.JSONDecodeError as e:
                         logger.error(f"Не удалось декодировать JSON из Redis сообщения: {e} - Данные: {message['data']}")
@@ -79,7 +75,6 @@ async def start_redis_listener(channel: str, handler_func, loop: asyncio.Abstrac
         except Exception as e:
             logger.critical(f"Критическая ошибка в потоке Redis слушателя: {e}. Поток будет остановлен.")
 
-    # Запускаем блокирующий слушатель Redis в отдельном потоке
     thread = threading.Thread(target=_listener_thread_target, daemon=True)
     thread.start()
     logger.info("Поток слушателя Redis инициирован.")

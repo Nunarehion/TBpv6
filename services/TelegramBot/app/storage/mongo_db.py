@@ -3,15 +3,13 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-# Подключение к MongoDB
 client = AsyncIOMotorClient("mongodb://mongodb:27017/")
 db = client["tbpv6"]
 handlers_collection = db["handlers"]
 bot_config_collection = db["bot_config"]
-messages_collection = db["messages"] # Новая коллекция для содержимого сообщений
-keyboards_collection = db["keyboards"] # Новая коллекция для клавиатур
-user_states_collection = db["user_states"] # Используем существующую коллекцию для получения user_id
-
+messages_collection = db["messages"] 
+keyboards_collection = db["keyboards"]
+user_states_collection = db["user_states"]
 async def upsert_data(data):
     name = data.get("name")
     if not name:
@@ -79,9 +77,6 @@ async def get_all_user_ids():
     """
     Получает все уникальные user_id из коллекции 'user_states'.
     """
-    # Используем distinct для получения уникальных user_id
-    # Обратите внимание: motor.motor_asyncio.AsyncIOMotorCollection.distinct
-    # возвращает список, который уже содержит уникальные значения.
     try:
         user_ids = await user_states_collection.distinct("user_id")
         logger.info(f"Получено {len(user_ids)} уникальных user_id.")

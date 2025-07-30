@@ -52,6 +52,7 @@ async def format_text_with_calculation(
             "min": min,
             "max": max,
             "abs": abs,
+            "str": str
         }
         try:
             return str(eval(expr, {"__builtins__": None, **safe_builtins}, safe_vars))

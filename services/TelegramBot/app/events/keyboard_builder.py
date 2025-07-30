@@ -5,7 +5,6 @@ from aiogram import types
 
 from app.storage.mongo_db import read_data 
 
-# Регулярное выражение для проверки URL
 url_pattern = re.compile(r'^(https?://|www\.)[^\s/$.?#].[^\s]*$')
 
 

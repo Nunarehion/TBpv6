@@ -4,8 +4,7 @@ import { ObjectId } from 'mongodb';
 
 const router = express.Router();
 
-// Маршрут для получения всех документов из коллекции
-// Это будет обрабатывать GET /api/:collectionName
+
 router.get('/:collectionName', async (req, res) => {
   const { collectionName } = req.params;
   try {
@@ -18,8 +17,6 @@ router.get('/:collectionName', async (req, res) => {
   }
 });
 
-// Маршрут для получения схемы коллекции
-// Это будет обрабатывать GET /api/schema/:collectionName
 router.get('/schema/:collectionName', async (req, res) => {
   const { collectionName } = req.params;
   try {
@@ -38,8 +35,7 @@ router.get('/schema/:collectionName', async (req, res) => {
   }
 });
 
-// Маршрут для обновления документа в коллекции по ID
-// Это будет обрабатывать PUT /api/:collectionName/:id
+
 router.put('/:collectionName/:id', async (req, res) => {
   const { collectionName, id } = req.params;
   const updateData = req.body;
@@ -62,8 +58,7 @@ router.put('/:collectionName/:id', async (req, res) => {
   }
 });
 
-// Маршрут для удаления документа из коллекции по ID
-// Это будет обрабатывать DELETE /api/:collectionName/:id
+
 router.delete('/:collectionName/:id', async (req, res) => {
   const { collectionName, id } = req.params;
 

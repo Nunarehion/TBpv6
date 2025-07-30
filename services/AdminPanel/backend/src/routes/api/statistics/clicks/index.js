@@ -1,9 +1,8 @@
 import { Router } from 'express';
 import { getCollection } from '../../../../config/db.js';
 
-// Импортируем под-роутеры для статистики кликов
-import clicksByPatternRouter from './by-pattern.js'; // <-- Добавьте этот импорт
-import clicksTimeSeriesRouter from './time-series.js'; // <-- Добавьте этот импорт
+import clicksByPatternRouter from './by-pattern.js';
+import clicksTimeSeriesRouter from './time-series.js';
 
 
 const router = Router();
@@ -45,8 +44,7 @@ router.get('/', async (req, res, next) => {
   }
 });
 
-// Монтируем под-роутеры ОТНОСИТЕЛЬНО этого роутера
-router.use('/by-pattern', clicksByPatternRouter);   // Будет /statistics/clicks/by-pattern
-router.use('/time-series', clicksTimeSeriesRouter); // Будет /statistics/clicks/time-series
 
+router.use('/by-pattern', clicksByPatternRouter); 
+router.use('/time-series', clicksTimeSeriesRouter);
 export default router;
