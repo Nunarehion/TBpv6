@@ -1,4 +1,19 @@
-FROM node:18
+# FROM node:18-alpine
+
+# WORKDIR /app
+
+# COPY package*.json ./
+# RUN npm install
+
+# COPY . .
+
+# EXPOSE 5173
+
+# CMD ["npm", "run", "dev", "--", "--host"]
+
+# FROM node:18-alpine
+
+FROM node:18-alpine
 
 WORKDIR /app
 
@@ -7,6 +22,8 @@ RUN npm install
 
 COPY . .
 
-EXPOSE 5173
+RUN npm run build
 
-CMD ["npm", "run", "dev", "--", "--host"]
+EXPOSE 4173
+
+CMD ["npm", "run", "preview"]
