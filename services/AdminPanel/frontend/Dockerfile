@@ -2,13 +2,15 @@ FROM node:18
 
 WORKDIR /app
 
-COPY package*.json ./
-
-RUN rm -rf node_modules && npm install
-
-
+# Копируем все файлы проекта в контейнер перед установкой зависимостей.
+# Это гарантирует, что все конфигурации и скрипты будут доступны для npm.
 COPY . .
 
+# Устанавливаем все зависимости.
+RUN npm install
+
+# Открываем порт для Vite dev server
 EXPOSE 5173
 
-CMD ["npx", "vite", "--host"]
+# Запускаем dev-сервер, используя стандартный скрипт npm.
+CMD ["npm", "run", "dev", "--", "--host"]
