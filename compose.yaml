@@ -9,10 +9,7 @@ services:
       - "8000:5000"
     volumes:
       - ./services/TelegramBot/app:/app/app
-      # ДОБАВЛЕНО: Монтируем папку uploads с хоста в контейнер бота
-      - ./uploads:/bot_uploads # Путь на хосте:Путь внутри контейнера бота
-      # Убедитесь, что ./uploads - это папка в корне вашего проекта,
-      # где также лежит docker-compose.yml и папка services.
+      - ./uploads:/bot_uploads
 
   redis:
     image: "redis:alpine"
@@ -25,24 +22,6 @@ services:
     volumes:
       - mongo_data:/data/db
 
-  admin_backend:
-    build:
-      context: ./services/AdminPanel/backend
-      dockerfile: Dockerfile
-    ports:
-      - "3000:3000"
-    volumes:
-      - ./services/AdminPanel/backend:/app
-      # Это уже монтирует папку uploads из корня проекта в контейнер бэкенда
-      - ./uploads:/uploads # Host ./uploads to container /uploads
-    environment:
-      - MONGO_URL=mongodb://mongodb:27017
-      - REDIS_URL=redis://redis:6379
-
-    depends_on:
-      - mongodb
-      - redis
-
   admin_frontend:
     build:
       context: ./services/AdminPanel/frontend
@@ -51,8 +30,10 @@ services:
       - "5173:5173"
     volumes:
       - ./services/AdminPanel/frontend:/app
+      - ./uploads:/app/uploads
     depends_on:
-      - admin_backend
+      - mongodb
+      - redis
 
 volumes:
   mongo_data:

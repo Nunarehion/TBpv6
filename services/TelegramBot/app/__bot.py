@@ -6,8 +6,8 @@ from aiogram.client.bot import DefaultBotProperties
 
 from app.events.router import router
 from app.storage.mongo_db import get_bot_config, initialize_bot_config_if_not_exists
-from app.storage.redis_db import start_redis_listener # Import the new Redis listener
-from app.broadcast_service import send_broadcast_message # Import the broadcast service
+from app.storage.redis_db import start_redis_listener
+from app.broadcast_service import send_broadcast_message
 
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -59,14 +59,12 @@ async def initialize_and_start_bot():
     current_dp.include_router(router)
     last_bot_token = new_bot_token
 
-    # Define the asynchronous handler for messages from Redis
     async def redis_broadcast_handler(data: dict):
         await send_broadcast_message(data, current_bot)
 
-    # Start the Redis listener in a separate thread, but its handler is called in the main event loop
     current_loop = asyncio.get_running_loop()
-    asyncio.create_task(start_redis_listener("broadcast_channel", redis_broadcast_handler, current_loop))
-    logger.info("Задача слушателя Redis запланирована.")
+    asyncio.create_task(start_redis_listener("tbpv6_broadcast_channel", redis_broadcast_handler, current_loop))
+    logger.info("Слушатель Redis запущен.")
 
     if bot_config.get("webhook_url") and bot_config.get("webhook_port"):
         logger.warning("Вебхук настроен в конфиге, но бот запускается в режиме long polling. Для вебхуков нужна дополнительная настройка веб-сервера.")

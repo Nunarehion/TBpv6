@@ -9,7 +9,7 @@
 		loadDocuments,
 		addDocument,
 		deleteDocument
-	} from '$lib/stores/db.js';
+	} from '$lib/stores/_db.js';
 
 	onMount(() => {
 		loadDocuments(collectionName);

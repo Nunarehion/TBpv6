@@ -1,490 +1,513 @@
 <script>
-    import { onMount } from 'svelte';
-    import {
-        clickStatistics,
-        loadingClickStatistics,
-        fetchClickStatistics,
-        timeSeriesData,
-        loadingTimeSeriesData,
-        fetchTimeSeriesClickStatistics,
-        clicksByPatternData,
-        loadingClicksByPatternData,
-        fetchClicksByPatternStatistics,
-        handlerPatterns,
-        fetchHandlerPatterns,
-        error
-    } from '$lib/stores/db.js';
+	import { onMount } from 'svelte';
+	import { writable } from 'svelte/store';
 
-    import LineChart from '$lib/components/charts/LineChart.svelte';
-    import PieChart from '$lib/components/charts/PieChart.svelte';
+	import LineChart from '$lib/components/charts/LineChart.svelte';
+	import PieChart from '$lib/components/charts/PieChart.svelte';
 
-    let startDate = $state('');
-    let endDate = $state('');
-    let interval = $state('hour');
+	const clickStatistics = writable(null);
+	const loadingClickStatistics = writable(false);
+	const timeSeriesData = writable([]);
+	const loadingTimeSeriesData = writable(false);
+	const clicksByPatternData = writable([]);
+	const loadingClicksByPatternData = writable(false);
+	const apiError = writable(null);
 
-    let selectedPattern = $state('');
+	let startDate = $state('');
+	let endDate = $state('');
+	let interval = $state('hour');
 
-    let showLoadingMessage = $state(false);
+	let selectedPattern = $state('');
 
-    const registeredLoadFunctions = [];
+	let showLoadingMessage = $state(false);
 
-    const registerLoadFunction = (func) => {
-        registeredLoadFunctions.push(func);
-    };
+	const registeredLoadFunctions = [];
 
-    function getAdjustedStartDateIso(dateString) {
-        if (!dateString) return '';
-        const dt = new Date(dateString);
-        dt.setHours(0, 0, 0, 0);
-        return dt.toISOString();
-    }
+	const registerLoadFunction = (func) => {
+		registeredLoadFunctions.push(func);
+	};
 
-    function getAdjustedEndDateIso(dateString) {
-        if (!dateString) return '';
-        const dt = new Date(dateString);
-        dt.setHours(23, 59, 59, 999);
-        return dt.toISOString();
-    }
+	function getAdjustedStartDateIso(dateString) {
+		if (!dateString) return '';
+		const parts = dateString.split('-').map(Number);
+		const dt = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2], 0, 0, 0, 0));
+		return dt.toISOString();
+	}
 
-    async function loadAllStatistics() {
-        error.set(null);
+	function getAdjustedEndDateIso(dateString) {
+		if (!dateString) return '';
+		const parts = dateString.split('-').map(Number);
+		const dt = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2], 23, 59, 59, 999));
+		return dt.toISOString();
+	}
 
-        const startIso = getAdjustedStartDateIso(startDate);
-        const endIso = getAdjustedEndDateIso(endDate);
+	async function fetchClickStatistics(startIso, endIso, pattern = null) {
+		loadingClickStatistics.set(true);
+		apiError.set(null);
+		try {
+			let url = `/api/statistics/clicks/total?startDate=${startIso}&endDate=${endIso}`;
+			if (pattern) {
+				url += `&pattern=${encodeURIComponent(pattern)}`;
+			}
+			const response = await fetch(url);
+			if (!response.ok) {
+				const errorData = await response.json();
+				throw new Error(errorData.error || 'Ошибка загрузки общей статистики кликов');
+			}
+			const data = await response.json();
+			clickStatistics.set(data);
+		} catch (err) {
+			apiError.set(err.message);
+			clickStatistics.set(null);
+		} finally {
+			loadingClickStatistics.set(false);
+		}
+	}
 
-        if (
-            !startIso ||
-            !endIso ||
-            isNaN(new Date(startIso).getTime()) ||
-            isNaN(new Date(endIso).getTime())
-        ) {
-            error.set('Пожалуйста, выберите корректные начальную и конечную даты.');
-            return;
-        }
+	async function fetchTimeSeriesClickStatistics(startIso, endIso, backendInterval) {
+		loadingTimeSeriesData.set(true);
+		apiError.set(null);
+		try {
+			const url = `/api/statistics/clicks/time-series?startDate=${startIso}&endDate=${endIso}&interval=${backendInterval}`;
+			const response = await fetch(url);
+			if (!response.ok) {
+				const errorData = await response.json();
+				throw new Error(errorData.error || 'Ошибка загрузки временного ряда кликов');
+			}
+			const data = await response.json();
+			timeSeriesData.set(data);
+		} catch (err) {
+			apiError.set(err.message);
+			timeSeriesData.set([]);
+		} finally {
+			loadingTimeSeriesData.set(false);
+		}
+	}
 
-        for (const func of registeredLoadFunctions) {
-            await func(startIso, endIso, interval);
-        }
-    }
+	async function fetchClicksByPatternStatistics(startIso, endIso) {
+		loadingClicksByPatternData.set(true);
+		apiError.set(null);
+		try {
+			const url = `/api/statistics/clicks/by-pattern?startDate=${startIso}&endDate=${endIso}`;
+			const response = await fetch(url);
+			if (!response.ok) {
+				const errorData = await response.json();
+				throw new Error(errorData.error || 'Ошибка загрузки кликов по паттернам');
+			}
+			const data = await response.json();
+			clicksByPatternData.set(data);
+		} catch (err) {
+			apiError.set(err.message);
+			clicksByPatternData.set([]);
+		} finally {
+			loadingClicksByPatternData.set(false);
+		}
+	}
 
-    onMount(async () => {
-        const now = new Date();
-        const tomorrow = new Date(now);
-        tomorrow.setDate(now.getDate() + 1);
-        endDate = tomorrow.toISOString().slice(0, 10);
+	async function loadAllStatistics() {
+		apiError.set(null);
 
-        const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-        startDate = sevenDaysAgo.toISOString().slice(0, 10);
+		const startIso = getAdjustedStartDateIso(startDate);
+		const endIso = getAdjustedEndDateIso(endDate);
 
-        registerLoadFunction(async (startIso, endIso) => {
-            await delayedLoad(loadClickStats, startIso, endIso, selectedPattern);
-        });
-        registerLoadFunction(async (startIso, endIso, currentInterval) => {
-            await delayedLoad(loadTimeSeriesStats, startIso, endIso, currentInterval);
-        });
-        registerLoadFunction(async (startIso, endIso) => {
-            await delayedLoad(loadClicksByPatternStats, startIso, endIso);
-        });
+		if (
+			!startIso ||
+			!endIso ||
+			isNaN(new Date(startIso).getTime()) ||
+			isNaN(new Date(endIso).getTime())
+		) {
+			apiError.set('Пожалуйста, выберите корректные начальную и конечную даты.');
+			return;
+		}
 
-        await fetchHandlerPatterns();
-        await loadAllStatistics();
-    });
+		for (const func of registeredLoadFunctions) {
+			await func(startIso, endIso, interval);
+		}
+	}
 
-    async function delayedLoad(func, ...args) {
-        showLoadingMessage = true;
-        const startTime = Date.now();
-        await func(...args);
-        const elapsedTime = Date.now() - startTime;
-        const minDisplayTime = 300;
+	onMount(async () => {
+		const now = new Date();
+		const tomorrow = new Date(now);
+		tomorrow.setDate(now.getDate() + 1);
+		endDate = tomorrow.toISOString().slice(0, 10);
 
-        if (elapsedTime < minDisplayTime) {
-            await new Promise((resolve) => setTimeout(resolve, minDisplayTime - elapsedTime));
-        }
-        showLoadingMessage = false;
-    }
+		const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+		startDate = sevenDaysAgo.toISOString().slice(0, 10);
 
-    async function loadClickStats(startIso, endIso, pattern) {
-        error.set(null);
-        await fetchClickStatistics(startIso, endIso, pattern || null);
-    }
+		registerLoadFunction(async (startIso, endIso) => {
+			await delayedLoad(fetchClickStatistics, startIso, endIso, selectedPattern);
+		});
+		registerLoadFunction(async (startIso, endIso, currentInterval) => {
+			await delayedLoad(fetchTimeSeriesClickStatistics, startIso, endIso, currentInterval);
+		});
+		registerLoadFunction(async (startIso, endIso) => {
+			await delayedLoad(fetchClicksByPatternStatistics, startIso, endIso);
+		});
 
-    async function loadTimeSeriesStats(startIso, endIso, currentInterval) {
-        error.set(null);
-        let backendInterval = currentInterval;
-        if (!['second', 'minute', 'hour', 'day', 'month'].includes(currentInterval)) {
-            backendInterval = 'second';
-        }
-        await fetchTimeSeriesClickStatistics(startIso, endIso, backendInterval);
-    }
+		await loadAllStatistics();
+	});
 
-    async function loadClicksByPatternStats(startIso, endIso) {
-        error.set(null);
-        await fetchClicksByPatternStatistics(startIso, endIso);
-    }
+	async function delayedLoad(func, ...args) {
+		showLoadingMessage = true;
+		const startTime = Date.now();
+		await func(...args);
+		const elapsedTime = Date.now() - startTime;
+		const minDisplayTime = 300;
 
-    function generateFullDateRange(start, end, intervalType) {
-        const dates = [];
-        let currentDate = new Date(start);
-        const endDateObj = new Date(end);
+		if (elapsedTime < minDisplayTime) {
+			await new Promise((resolve) => setTimeout(resolve, minDisplayTime - elapsedTime));
+		}
+		showLoadingMessage = false;
+	}
 
-        while (currentDate <= endDateObj) {
-            dates.push(new Date(currentDate));
+	function generateFullDateRange(startIso, endIso, intervalType) {
+		const dates = [];
+		let currentUtcDate = new Date(startIso);
+		const endUtcDateObj = new Date(endIso);
 
-            if (intervalType === 'second') {
-                currentDate.setSeconds(currentDate.getSeconds() + 1);
-            } else if (intervalType === 'minute') {
-                currentDate.setMinutes(currentDate.getMinutes() + 1);
-            } else if (intervalType === 'hour') {
-                currentDate.setHours(currentDate.getHours() + 1);
-            } else if (intervalType === 'day') {
-                currentDate.setDate(currentDate.getDate() + 1);
-            } else if (intervalType === 'month') {
-                currentDate.setMonth(currentDate.getMonth() + 1);
-            } else if (intervalType === '15_seconds') {
-                currentDate.setSeconds(currentDate.getSeconds() + 15);
-            } else if (intervalType === '10_minutes') {
-                currentDate.setMinutes(currentDate.getMinutes() + 10);
-            } else if (intervalType === 'half_hour') {
-                currentDate.setMinutes(currentDate.getMinutes() + 30);
-            } else if (intervalType === '12_hours') {
-                currentDate.setHours(currentDate.getHours() + 12);
-            } else if (intervalType === '3_days') {
-                currentDate.setDate(currentDate.getDate() + 3);
-            } else if (intervalType === 'week') {
-                currentDate.setDate(currentDate.getDate() + 7);
-            } else if (intervalType === '4_months') {
-                currentDate.setMonth(currentDate.getMonth() + 4);
-            } else {
-                currentDate.setDate(currentDate.getDate() + 1);
-            }
-        }
-        return dates;
-    }
+		if (['day', 'week', 'month', '3_days', '4_months'].includes(intervalType)) {
+			currentUtcDate.setUTCHours(0, 0, 0, 0);
+		}
 
-    let aggregatedTimeSeriesData = $derived.by(() => {
-        const rawData = $timeSeriesData;
-        const currentInterval = interval;
+		while (currentUtcDate <= endUtcDateObj) {
+			dates.push(new Date(currentUtcDate));
 
-        if (!startDate || !endDate || rawData.length === 0) {
-            return [];
-        }
+			if (intervalType === 'minute') {
+				currentUtcDate.setUTCMinutes(currentUtcDate.getUTCMinutes() + 1);
+			} else if (intervalType === 'hour') {
+				currentUtcDate.setUTCHours(currentUtcDate.getUTCHours() + 1);
+			} else if (intervalType === 'day') {
+				currentUtcDate.setUTCDate(currentUtcDate.getUTCDate() + 1);
+			} else if (intervalType === 'month') {
+				currentUtcDate.setUTCMonth(currentUtcDate.getUTCMonth() + 1);
+			} else if (intervalType === '10_minutes') {
+				currentUtcDate.setUTCMinutes(currentUtcDate.getUTCMinutes() + 10);
+			} else if (intervalType === 'half_hour') {
+				currentUtcDate.setUTCMinutes(currentUtcDate.getUTCMinutes() + 30);
+			} else if (intervalType === '12_hours') {
+				currentUtcDate.setUTCHours(currentUtcDate.getUTCHours() + 12);
+			} else if (intervalType === '3_days') {
+				currentUtcDate.setUTCDate(currentUtcDate.getUTCDate() + 3);
+			} else if (intervalType === 'week') {
+				currentUtcDate.setUTCDate(currentUtcDate.getUTCDate() + 7);
+			} else if (intervalType === '4_months') {
+				currentUtcDate.setUTCMonth(currentUtcDate.getUTCMonth() + 4);
+			} else {
+				currentUtcDate.setUTCDate(currentUtcDate.getUTCDate() + 1);
+			}
+		}
+		return dates;
+	}
 
-        const start = getAdjustedStartDateIso(startDate);
-        const end = getAdjustedEndDateIso(endDate);
+	let aggregatedTimeSeriesData = $derived.by(() => {
+		const rawData = $timeSeriesData;
+		const currentInterval = interval;
 
-        const fullRange = generateFullDateRange(start, end, currentInterval);
+		if (!startDate || !endDate || !rawData || rawData.length === 0) {
+			return [];
+		}
 
-        const dataMap = new Map();
-        rawData.forEach(item => {
-            dataMap.set(new Date(item.time).toISOString(), item.count);
-        });
+		const startIso = getAdjustedStartDateIso(startDate);
+		const endIso = getAdjustedEndDateIso(endDate);
 
-        const result = fullRange.map(date => {
-            const isoString = date.toISOString();
-            const count = dataMap.get(isoString) || 0;
-            return { time: isoString, count: count };
-        });
+		const fullRange = generateFullDateRange(startIso, endIso, currentInterval);
 
-        return result;
-    });
+		const dataMap = new Map();
+		rawData.forEach((item) => {
+			dataMap.set(item.time, item.count);
+		});
 
-    let lineChartYMax = $derived.by(() => {
-        if (!aggregatedTimeSeriesData || aggregatedTimeSeriesData.length === 0) {
-            return 10;
-        }
-        const maxCount = Math.max(...aggregatedTimeSeriesData.map((d) => d.count));
-        const buffer = 10;
-        const percentageBuffer = maxCount * 0.1;
-        return Math.ceil(maxCount + buffer + percentageBuffer);
-    });
+		const result = fullRange.map((date) => {
+			const isoString = date.toISOString();
+			const count = dataMap.get(isoString) || 0;
+			return { time: isoString, count: count };
+		});
 
-    let pieChartData = $derived.by(() => {
-        return $clicksByPatternData;
-    });
+		return result;
+	});
 
+	let lineChartYMax = $derived.by(() => {
+		if (!aggregatedTimeSeriesData || aggregatedTimeSeriesData.length === 0) {
+			return 10;
+		}
+
+		const maxCount = aggregatedTimeSeriesData.reduce((max, d) => Math.max(max, d.count), 0);
+
+		const buffer = 10;
+		const percentageBuffer = maxCount * 0.1;
+
+		return Math.max(1, Math.ceil(maxCount + buffer + percentageBuffer));
+	});
+
+	let pieChartData = $derived.by(() => {
+		return $clicksByPatternData;
+	});
 </script>
 
 <h1>Статистика Бота</h1>
 
-
-
 <section class="stat-section">
-    <h2>Статистика кликов по времени (Линейный график)</h2>
-    <div class="input-group-container">
-        <label for="interval">Интервал:</label>
-        <select id="interval" bind:value={interval} on:change={loadAllStatistics}>
-            <option value="second">По секундам</option>
-            <option value="minute">По минутам</option>
-            <option value="hour">По часам</option>
-            <option value="day">По дням</option>
-            <option value="month">По месяцам</option>
-            <option value="15_seconds">По 15 секунд</option>
-            <option value="10_minutes">По 10 минут</option>
-            <option value="half_hour">По полчаса</option>
-            <option value="12_hours">По 12 часов</option>
-            <option value="3_days">По 3 дня</option>
-            <option value="week">По неделям</option>
-            <option value="4_months">По 4 месяца</option>
-        </select>
-    </div>
-    <div class="chart-container">
-        {#if $loadingTimeSeriesData || showLoadingMessage}
-            <p class="info-message transition-fade">Загрузка данных для линейного графика...</p>
-        {:else if $error && aggregatedTimeSeriesData.length === 0}
-            <p class="error-message transition-fade">
-                Ошибка загрузки данных для линейного графика: {$error}
-            </p>
-        {:else if aggregatedTimeSeriesData && aggregatedTimeSeriesData.length > 0}
-            <LineChart data={aggregatedTimeSeriesData} yAxisMax={lineChartYMax} />
-        {:else}
-            <p class="info-message transition-fade">
-                Нет данных для отображения линейного графика за выбранный период.
-            </p>
-        {/if}
-    </div>
+	<h2>Статистика кликов по времени (Линейный график)</h2>
+	<div class="input-group-container">
+		<label for="interval">Интервал:</label>
+		<select id="interval" bind:value={interval} on:change={loadAllStatistics}>
+			<option value="minute">По минутам</option>
+			<option value="10_minutes">По 10 минут</option>
+			<option value="half_hour">По полчаса</option>
+			<option value="12_hours">По 12 часов</option>
+			<option value="hour">По часам</option>
+			<option value="day">По дням</option>
+			<option value="week">По неделям</option>
+			<option value="month">По месяцам</option>
+		</select>
+	</div>
+	<div class="chart-container">
+		{#if $loadingTimeSeriesData || showLoadingMessage}
+			<p class="info-message transition-fade">Загрузка данных для линейного графика...</p>
+		{:else if $apiError && aggregatedTimeSeriesData.length === 0}
+			<p class="error-message transition-fade">
+				Ошибка загрузки данных для линейного графика: {$apiError}
+			</p>
+		{:else if aggregatedTimeSeriesData && aggregatedTimeSeriesData.length > 0}
+			<LineChart data={aggregatedTimeSeriesData} yAxisMax={lineChartYMax} />
+		{:else}
+			<p class="info-message transition-fade">
+				Нет данных для отображения линейного графика за выбранный период.
+			</p>
+		{/if}
+	</div>
 </section>
 <section class="stat-section">
-    <h2>Общая статистика</h2>
-    <div class="input-group-container">
-        <div>
-            <label for="statStartDate">Начальная дата:</label>
-            <input
-                type="date"
-                id="statStartDate"
-                bind:value={startDate}
-                on:change={loadAllStatistics}
-                min="2020-01-01"
-                max="2030-12-31"
-            />
-        </div>
-        <div>
-            <label for="statEndDate">Конечная дата:</label>
-            <input
-                type="date"
-                id="statEndDate"
-                bind:value={endDate}
-                on:change={loadAllStatistics}
-                min="2020-01-01"
-                max="2030-12-31"
-            />
-        </div>
-        <div>
-            <label for="statPattern">Паттерн (опционально):</label>
-            <input
-                type="text"
-                id="statPattern"
-                bind:value={selectedPattern}
-                placeholder="Например, query/button_1"
-                on:change={loadAllStatistics}
-            />
-        </div>
-        <button on:click={loadAllStatistics} class="update-button"> Обновить статистику </button>
-    </div>
+	<h2>Общая статистика</h2>
+	<div class="input-group-container">
+		<div>
+			<label for="statStartDate">Начальная дата:</label>
+			<input
+				type="date"
+				id="statStartDate"
+				bind:value={startDate}
+				on:change={loadAllStatistics}
+				min="2020-01-01"
+				max="2030-12-31"
+			/>
+		</div>
+		<div>
+			<label for="statEndDate">Конечная дата:</label>
+			<input
+				type="date"
+				id="statEndDate"
+				bind:value={endDate}
+				on:change={loadAllStatistics}
+				min="2020-01-01"
+				max="2030-12-31"
+			/>
+		</div>
+		<div>
+			<label for="statPattern">Паттерн (опционально):</label>
+			<input
+				type="text"
+				id="statPattern"
+				bind:value={selectedPattern}
+				placeholder="Например, query/button_1"
+				on:change={loadAllStatistics}
+			/>
+		</div>
+		<button on:click={loadAllStatistics} class="update-button"> Обновить статистику </button>
+	</div>
 
-    <div class="summary-content-placeholder">
-        {#if $error}
-            <p class="error-message transition-fade">Ошибка: {$error}</p>
-        {:else if $loadingClickStatistics || showLoadingMessage}
-            <p class="info-message transition-fade">Загрузка общей статистики...</p>
-        {:else if $clickStatistics && $clickStatistics.count !== undefined}
-            <div class="stats-card transition-fade">
-                <p class="stat-value">{$clickStatistics.count}</p>
-                <p class="stat-label">Количество кликов</p>
-            </div>
-        {:else}
-            <p class="info-message transition-fade">
-                Общая статистика пока не загружена. Выберите даты и нажмите "Обновить статистику".
-            </p>
-        {/if}
-    </div>
+	<div class="summary-content-placeholder">
+		{#if $apiError}
+			<p class="error-message transition-fade">Ошибка: {$apiError}</p>
+		{:else if $loadingClickStatistics || showLoadingMessage}
+			<p class="info-message transition-fade">Загрузка общей статистики...</p>
+		{:else if $clickStatistics && $clickStatistics.count !== undefined}
+			<div class="stats-card transition-fade">
+				<p class="stat-value">{$clickStatistics.count}</p>
+				<p class="stat-label">Количество кликов</p>
+			</div>
+		{:else}
+			<p class="info-message transition-fade">
+				Общая статистика пока не загружена. Выберите даты и нажмите "Обновить статистику".
+			</p>
+		{/if}
+	</div>
 </section>
 <section class="stat-section">
-    <h2>Статистика кликов по паттернам (Круговой график)</h2>
-    <div class="input-group-container"></div>
-    <div class="chart-container">
-        {#if $loadingClicksByPatternData || showLoadingMessage}
-            <p class="info-message transition-fade">Загрузка данных для кругового графика...</p>
-        {:else if $error && pieChartData.length === 0}
-            <p class="error-message transition-fade">
-                Ошибка загрузки данных для кругового графика: {$error}
-            </p>
-        {:else if pieChartData && pieChartData.length > 0}
-            <PieChart data={pieChartData} />
-        {:else}
-            <p class="info-message transition-fade">
-                Нет данных для отображения кругового графика за выбранный период.
-            </p>
-        {/if}
-    </div>
+	<h2>Статистика кликов по паттернам (Круговой график)</h2>
+	<div class="input-group-container"></div>
+	<div class="chart-container">
+		{#if $loadingClicksByPatternData || showLoadingMessage}
+			<p class="info-message transition-fade">Загрузка данных для кругового графика...</p>
+		{:else if $apiError && pieChartData.length === 0}
+			<p class="error-message transition-fade">
+				Ошибка загрузки данных для кругового графика: {$apiError}
+			</p>
+		{:else if pieChartData && pieChartData.length > 0}
+			<PieChart data={pieChartData} />
+		{:else}
+			<p class="info-message transition-fade">
+				Нет данных для отображения кругового графика за выбранный период.
+			</p>
+		{/if}
+	</div>
 </section>
 
 <style>
-    body {
-        background-color: var(--first-color);
-        color: var(--main-text);
-        font-family: 'Inter', sans-serif;
-    }
+	h1 {
+		text-align: center;
+		margin-bottom: 2rem;
+		color: var(--gray-text);
+		font-size: 2.5rem;
+	}
 
-    h1 {
-        text-align: center;
-        margin-bottom: 2rem;
-        color: var(--gray-text);
-        font-size: 2.5rem;
-    }
+	h2 {
+		color: var(--gray-text);
+		margin-bottom: 1.5rem;
+		font-size: 1.75rem;
+		border-bottom: 1px solid var(--border-gray);
+		padding-bottom: 0.5rem;
+	}
 
-    h2 {
-        color: var(--gray-text);
-        margin-bottom: 1.5rem;
-        font-size: 1.75rem;
-        border-bottom: 1px solid var(--border-gray);
-        padding-bottom: 0.5rem;
-    }
+	section {
+		align-self: stretch;
+		margin-bottom: 2.5rem;
+		padding: 2rem;
+		border: 1px solid var(--border-gray);
+		border-radius: 10px;
+		background-color: var(--first-color);
+		color: var(--main-text);
+		box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+		max-width: 1200px;
+		box-sizing: border-box;
+	}
 
-    section {
-        align-self: stretch;
-        margin-bottom: 2.5rem;
-        padding: 2rem;
-        border: 1px solid var(--border-gray);
-        border-radius: 10px;
-        background-color: var(--first-color);
-        color: var(--main-text);
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-        max-width: 1200px;
-        box-sizing: border-box;
-    }
+	.input-group-container {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+		gap: 1.5rem;
+		margin-bottom: 1.5rem;
+		align-items: end;
+	}
 
-    .input-group-container {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 1.5rem;
-        margin-bottom: 1.5rem;
-        align-items: end;
-    }
+	.input-group-container > div {
+		display: flex;
+		flex-direction: column;
+	}
 
-    .input-group-container > div {
-        display: flex;
-        flex-direction: column;
-    }
+	label {
+		margin-bottom: 0.5rem;
+		font-weight: bold;
+		color: var(--gray-text);
+		font-size: 0.95rem;
+	}
 
-    label {
-        margin-bottom: 0.5rem;
-        font-weight: bold;
-        color: var(--gray-text);
-        font-size: 0.95rem;
-    }
+	input[type='date'],
+	input[type='text'],
+	select {
+		padding: 0.75rem;
+		border: 1px solid var(--border-gray);
+		border-radius: 6px;
+		background-color: var(--first-color);
+		color: var(--main-text);
+		font-size: 1rem;
+		width: 100%;
+		box-sizing: border-box;
+	}
 
-    input[type='date'],
-    input[type='text'],
-    select {
-        padding: 0.75rem;
-        border: 1px solid var(--border-gray);
-        border-radius: 6px;
-        background-color: var(--first-color);
-        color: var(--main-text);
-        font-size: 1rem;
-        width: 100%;
-        box-sizing: border-box;
-    }
+	input[type='date']::-webkit-calendar-picker-indicator {
+		filter: invert(1);
+	}
 
-    input[type='date']::-webkit-calendar-picker-indicator {
-        filter: invert(1);
-    }
+	.update-button {
+		padding: 0.75rem 1.5rem;
+		background-color: var(--action-button-color);
+		color: var(--main-text);
+		border: none;
+		border-radius: 6px;
+		cursor: pointer;
+		font-size: 1rem;
+		transition: background-color 0.3s ease;
+		align-self: flex-end;
+	}
 
-    .update-button {
-        padding: 0.75rem 1.5rem;
-        background-color: var(--action-button-color);
-        color: var(--main-text);
-        border: none;
-        border-radius: 6px;
-        cursor: pointer;
-        font-size: 1rem;
-        transition: background-color 0.3s ease;
-        align-self: flex-end;
-    }
+	.update-button:hover {
+		background-color: var(--action-button-hover-color);
+	}
 
-    .update-button:hover {
-        background-color: var(--action-button-hover-color);
-    }
+	.transition-fade {
+		opacity: 1;
+		transition: opacity 0.3s ease-in-out;
+	}
 
-    .transition-fade {
-        opacity: 1;
-        transition: opacity 0.3s ease-in-out;
-    }
+	.info-message {
+		background-color: var(--info-message-bg);
+		color: var(--main-text);
+		padding: 1rem;
+		border-radius: 6px;
+		margin-top: 1rem;
+		text-align: center;
+		border: 1px solid var(--border-gray);
+	}
 
-    .loading-message,
-    .info-message {
-        background-color: var(--info-message-bg);
-        color: var(--main-text);
-        padding: 1rem;
-        border-radius: 6px;
-        margin-top: 1rem;
-        text-align: center;
-        border: 1px solid var(--border-gray);
-    }
+	.error-message {
+		background-color: #631c26;
+		color: var(--main-text);
+		padding: 1rem;
+		border-radius: 6px;
+		margin-top: 1rem;
+		text-align: center;
+		border: 1px solid var(--decor-red);
+	}
 
-    .error-message {
-        background-color: #631c26;
-        color: var(--main-text);
-        padding: 1rem;
-        border-radius: 6px;
-        margin-top: 1rem;
-        text-align: center;
-        border: 1px solid var(--decor-red);
-    }
+	.chart-container {
+		height: 350px;
+		width: 100%;
+		margin-top: 1.5rem;
+		display: flex;
+		justify-content: center;
+		align-items: center;
+	}
 
-    .chart-container {
-        height: 350px;
-        width: 100%;
-        margin-top: 1.5rem;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-    }
+	p {
+		color: var(--main-text);
+	}
 
-    p {
-        color: var(--main-text);
-    }
+	.summary-content-placeholder {
+		height: 120px;
+		display: flex;
+		flex-direction: column;
+		justify-content: center;
+		align-items: center;
+		text-align: center;
+		transition: all 0.3s ease-in-out;
+	}
 
-    p strong {
-        color: var(--decor-green);
-    }
+	.stats-card {
+		background-color: var(--second-color);
+		border: 1px solid var(--border-gray);
+		border-radius: 8px;
+		padding: 1.5rem 2rem;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 0.5rem;
+		box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+		max-width: fit-content;
+		margin: auto;
+		margin-bottom: 1rem;
+		margin-top: 1rem;
+	}
 
-    .summary-content-placeholder {
-        height: 120px;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
-        text-align: center;
-        transition: all 0.3s ease-in-out;
-    }
+	.stats-card .stat-value {
+		font-size: 3.5rem;
+		font-weight: bold;
+		color: var(--decor-green);
+		margin-bottom: 0.5rem;
+		line-height: 1;
+	}
 
-    .stats-card {
-        background-color: var(--second-color);
-        border: 1px solid var(--border-gray);
-        border-radius: 8px;
-        padding: 1.5rem 2rem;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 0.5rem;
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-        max-width: fit-content;
-        margin: auto;
-        margin-bottom: 1rem;
-        margin-top: 1rem;
-    }
-
-    .stats-card .stat-value {
-        font-size: 3.5rem;
-        font-weight: bold;
-        color: var(--decor-green);
-        margin-bottom: 0.5rem;
-        line-height: 1;
-    }
-
-    .stats-card .stat-label {
-        font-size: 1.1rem;
-        color: var(--gray-text);
-    }
+	.stats-card .stat-label {
+		font-size: 1.1rem;
+		color: var(--gray-text);
+	}
 </style>

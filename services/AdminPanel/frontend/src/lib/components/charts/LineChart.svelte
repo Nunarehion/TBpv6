@@ -2,10 +2,13 @@
     import { onMount } from 'svelte';
     import Chart from 'chart.js/auto';
 
-    export let data = [];
-    export let label = 'Количество кликов';
-    export let title = 'Статистика кликов по времени';
-    export let yAxisMax = null;
+    // Используем $props() с значениями по умолчанию прямо в деструктуризации
+    let {
+        data = [],
+        label = 'Количество кликов',
+        title = 'Статистика кликов по времени',
+        yAxisMax = null
+    } = $props();
 
     let canvas;
     let chartInstance = null;
@@ -14,10 +17,13 @@
     const grayTextColor = getComputedStyle(document.documentElement).getPropertyValue('--gray-text').trim();
     const blueColor = getComputedStyle(document.documentElement).getPropertyValue('--blue').trim();
     const borderColor = getComputedStyle(document.documentElement).getPropertyValue('--border-gray').trim();
-    const secondColor = getComputedStyle(document.documentElement).getPropertyValue('--second-color').trim();
-
 
     function renderChart() {
+        if (!canvas) {
+            console.warn('Элемент canvas не найден или не готов для отрисовки графика.');
+            return;
+        }
+
         if (chartInstance) {
             chartInstance.destroy();
         }
@@ -101,9 +107,11 @@
         renderChart();
     });
 
-    $: if (data || yAxisMax !== null) {
-        renderChart();
-    }
+    $effect(() => {
+        if (data || yAxisMax !== null) {
+            renderChart();
+        }
+    });
 </script>
 
 <div class="chart-wrapper">

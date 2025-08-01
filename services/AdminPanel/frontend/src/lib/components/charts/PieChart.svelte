@@ -2,8 +2,8 @@
     import { onMount } from 'svelte';
     import Chart from 'chart.js/auto';
 
-    export let data = [];
-    export let title = 'Клики по паттернам';
+    // Используем $props() с значениями по умолчанию прямо в деструктуризации
+    let { data = [], title = 'Клики по паттернам' } = $props();
 
     let canvas;
     let chartInstance = null;
@@ -23,6 +23,11 @@
     }
 
     function renderChart() {
+        if (!canvas) {
+            console.warn('Элемент canvas не найден или не готов для отрисовки графика.');
+            return;
+        }
+
         if (chartInstance) {
             chartInstance.destroy();
         }
@@ -68,9 +73,11 @@
         renderChart();
     });
 
-    $: if (data) {
-        renderChart();
-    }
+    $effect(() => {
+        if (data && canvas) {
+            renderChart();
+        }
+    });
 </script>
 
 <div class="chart-wrapper">

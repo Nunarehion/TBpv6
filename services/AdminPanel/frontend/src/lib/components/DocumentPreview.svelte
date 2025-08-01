@@ -1,25 +1,26 @@
 <script>
 	import { createEventDispatcher } from 'svelte';
-	import { fetchSchema } from '$lib/stores/db.js';
 	import DocumentsTable from '$lib/components/allColletion/DocumentsTable.svelte';
 
-	let { documents, loading, selectedCollection, isMessageRoute, displayFields, ...props } =
-		$props();
-
-	documents = documents ?? [];
-	loading = loading ?? false;
-	isMessageRoute = isMessageRoute ?? false;
+	let {
+		documents = [],
+		loading = false,
+		selectedCollection,
+		isMessageRoute = false,
+		displayFields = [],
+		...props
+	} = $props();
 
 	const dispatch = createEventDispatcher();
 
-	async function handleAdd() {
-		if (!selectedCollection) return;
-
-		const fields = await fetchSchema(selectedCollection);
+	function handleAdd() {
+		if (!selectedCollection || displayFields.length === 0) return;
 
 		const newDoc = {};
-		for (const key of fields) {
-			newDoc[key] = '';
+		for (const key of displayFields) {
+			if (key !== '_id' && key !== 'created_at' && key !== 'updated_at') {
+				newDoc[key] = '';
+			}
 		}
 
 		dispatch('add', newDoc);
