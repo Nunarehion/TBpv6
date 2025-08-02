@@ -8,4 +8,4 @@ COPY build ./
 
 EXPOSE 4173
 
-CMD ["node", "--input-type=module", "index.js"]
+CMD ["node", "index.js"]
