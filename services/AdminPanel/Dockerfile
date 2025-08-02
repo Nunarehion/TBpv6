@@ -18,4 +18,4 @@ COPY build ./
 EXPOSE 4173
 
 # Запускаем приложение
-CMD ["node", "index.js"]
+CMD ["sh", "-c", "PORT=3000 HOST=0.0.0.0 node index.js"]
