@@ -1,0 +1,1 @@
+import{a2 as t,a3 as h,k as S,W as T,a4 as c}from"./CnxLOvM0.js";function k(r,i){return r===i||(r==null?void 0:r[c])===i}function A(r={},i,a,q){return t(()=>{var f,s;return h(()=>{f=s,s=[],S(()=>{r!==a(...s)&&(i(r,...s),f&&k(a(...f),r)&&i(null,...f))})}),()=>{T(()=>{s&&k(a(...s),r)&&i(null,...s)})}}),r}export{A as b};

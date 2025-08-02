@@ -22,14 +22,13 @@ services:
     volumes:
       - mongo_data:/data/db
 
-  admin_frontend:
+  admin_panel:
     build:
-      context: ./services/AdminPanel/frontend
+      context: ./services/AdminPanel
       dockerfile: Dockerfile
     ports:
-      - "5173:5173"
+      - "4173:4173"
     volumes:
-      - ./services/AdminPanel/frontend:/app
       - ./uploads:/app/uploads
     depends_on:
       - mongodb

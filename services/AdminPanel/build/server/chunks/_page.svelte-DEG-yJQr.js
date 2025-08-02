@@ -1,0 +1,8 @@
+function _page($$payload) {
+  $$payload.out.push(`<section class="main-section svelte-hms8g7"><h1 class="main-title svelte-hms8g7">Админ-панель Telegram-бота</h1> <div class="main-cards-grid svelte-hms8g7"><a class="main-card svelte-hms8g7" href="/messages"><svg class="main-card-icon svelte-hms8g7"><use href="/sprite.svg#messages"></use></svg> <div class="main-card-title svelte-hms8g7">Сообщения</div> <div class="main-card-desc svelte-hms8g7">Создавайте, редактируйте и удаляйте шаблоны сообщений, управляйте клавиатурами и вложениями
+				для рассылок.</div></a> <a class="main-card svelte-hms8g7" href="/statistic/trigers"><svg class="main-card-icon svelte-hms8g7"><use href="/sprite.svg#chart-pie"></use></svg> <div class="main-card-title svelte-hms8g7">Статистика</div> <div class="main-card-desc svelte-hms8g7">Анализируйте активность пользователей, клики по паттернам, новые и активные пользователи за
+				выбранный период.</div></a> <a class="main-card svelte-hms8g7" href="/newsletter"><svg class="main-card-icon svelte-hms8g7"><use href="/sprite.svg#envelope-open"></use></svg> <div class="main-card-title svelte-hms8g7">Рассылка</div> <div class="main-card-desc svelte-hms8g7">Запускайте массовые рассылки выбранных сообщений всем пользователям или отдельным группам.</div></a> <a class="main-card svelte-hms8g7" href="/images"><svg class="main-card-icon svelte-hms8g7"><use href="/sprite.svg#image"></use></svg> <div class="main-card-title svelte-hms8g7">Картинки</div> <div class="main-card-desc svelte-hms8g7">Загружайте, просматривайте и управляйте изображениями для использования в сообщениях бота.</div></a></div></section>`);
+}
+
+export { _page as default };
+//# sourceMappingURL=_page.svelte-DEG-yJQr.js.map
