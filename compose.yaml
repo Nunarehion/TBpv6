@@ -27,9 +27,12 @@ services:
       context: ./services/AdminPanel
       dockerfile: Dockerfile
     ports:
-      - "3000:4173"
+      - "3000:3000"
     volumes:
       - ./uploads:/app/uploads
+    environment:
+      - HOST=0.0.0.0
+      - PORT=3000
     depends_on:
       - mongodb
       - redis
