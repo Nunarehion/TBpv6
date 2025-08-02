@@ -6,4 +6,4 @@ COPY . .
 
 EXPOSE 4173
 
-CMD ["node", "index.js"]
+CMD ["node", "build/index.js"]
