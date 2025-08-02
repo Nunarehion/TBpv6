@@ -27,7 +27,7 @@ services:
       context: ./services/AdminPanel
       dockerfile: Dockerfile
     ports:
-      - "3000:3000"
+      - "3000:4173"
     volumes:
       - ./uploads:/app/uploads
     depends_on:
