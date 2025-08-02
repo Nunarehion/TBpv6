@@ -2,8 +2,8 @@ FROM node:18-alpine
 
 WORKDIR /app
 
-COPY . .
+COPY build ./
 
 EXPOSE 4173
 
-CMD ["node", "build/index.js"]
+CMD ["node", "index.js"]
