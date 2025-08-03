@@ -1,6 +1,5 @@
 import { json } from '@sveltejs/kit';
 import { spawn } from 'child_process';
-import { promisify } from 'util';
 
 const MONGODB_CONTAINER = 'mongodb';
 
@@ -42,9 +41,15 @@ export async function POST({ request }) {
     try {
         const data = await request.formData();
         const file = data.get('backupFile');
+        const overwrite = data.get('overwrite') === 'true'; // Добавил проверку на флаг "перезаписать"
         const fileBuffer = Buffer.from(await file.arrayBuffer());
 
-        const restoreProcess = spawn('mongorestore', ['--host', MONGODB_CONTAINER, '--archive', '--gzip', '--drop']);
+        const args = ['--host', MONGODB_CONTAINER, '--archive', '--gzip'];
+        if (overwrite) {
+            args.push('--drop');
+        }
+
+        const restoreProcess = spawn('mongorestore', args);
 
         restoreProcess.stdin.write(fileBuffer);
         restoreProcess.stdin.end();
