@@ -113,6 +113,7 @@
 		grid-template-rows: max-content 1fr;
 		background: var(--first-color);
 		height: 100vh;
+		height: 100dvh;
 	}
 
 	nav {
