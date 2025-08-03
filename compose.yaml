@@ -21,6 +21,7 @@ services:
       - "27017:27017"
     volumes:
       - mongo_data:/data/db
+      
 
   admin_frontend:
     build:
@@ -30,12 +31,12 @@ services:
       - "3000:5173"
     volumes:
       - ./services/AdminPanel/frontend:/app
-      - ./uploads:/app/uploads
     environment:
-      - ORIGIN=http://127.0.0.1:3000 
+      - ORIGIN=http://127.0.0.1:3000
     depends_on:
       - mongodb
       - redis
+      
 
 volumes:
   mongo_data:

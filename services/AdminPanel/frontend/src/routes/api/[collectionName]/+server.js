@@ -5,7 +5,7 @@ export async function GET({ params }) {
     const { collectionName } = params;
     try {
         const collection = getMongoCollection(collectionName);
-        const documents = await collection.find({}).sort({ _id: -1 }).toArray();
+        const documents = await collection.find({}).toArray();
         return json(documents);
     } catch (err) {
         console.error(`Error fetching documents from ${collectionName}:`, err);
