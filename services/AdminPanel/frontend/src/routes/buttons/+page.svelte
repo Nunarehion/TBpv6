@@ -106,6 +106,8 @@
 	documents={$documents}
 	loading={$loadingDocuments}
 	selectedCollection={collectionName}
+	displayFields={['_id', 'text', 'callback_data', 'created_at']}
+	orderFields={['_id', 'text', 'callback_data', 'created_at']}
 	on:save={(e) => handleSave(e.detail)}
 	on:add={handleAdd}
 	on:delete={(e) => handleDelete(e.detail)}
