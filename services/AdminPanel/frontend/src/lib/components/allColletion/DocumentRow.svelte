@@ -287,7 +287,7 @@
 			justify-content: flex-start;
 			border-bottom: none;
 		}
-		.actions-cell {
+		.select-cell {
 			display: none;
 		}
 	}
