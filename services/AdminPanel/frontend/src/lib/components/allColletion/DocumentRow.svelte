@@ -253,7 +253,7 @@
 		.table-row {
 			display: block;
 			margin-bottom: 1rem;
-			border-bottom: 2px solid var(--border-gray);
+			border-bottom: 2px solid var(--action-button-color);
 			border-radius: 8px;
 			padding: 1rem;
 		}
