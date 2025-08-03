@@ -292,7 +292,7 @@
 		}
 		span {
 			display: block;
-			padding: 0.5 rem;
+			padding: 0.5rem;
 		}
 	}
 </style>
