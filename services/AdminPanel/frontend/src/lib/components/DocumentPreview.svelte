@@ -2,6 +2,11 @@
 	import { createEventDispatcher } from 'svelte';
 	import DocumentsTable from '$lib/components/allColletion/DocumentsTable.svelte';
 
+	import DocumentEditModal from './allColletion/DocumentEditModal.svelte';
+	import MessageEditModal from './allColletion/MessageEditModal.svelte';
+	import KeyboardEditModal from './allColletion/KeyboardEditModal.svelte';
+	import HandlerEditModal from './allColletion/HandlerEditModal.svelte';
+
 	let {
 		documents = [],
 		loading = false,
@@ -13,17 +18,31 @@
 
 	const dispatch = createEventDispatcher();
 
+	let showAddModal = $state(false);
+	let newDocumentData = $state(null);
+
 	function handleAdd() {
 		if (!selectedCollection || displayFields.length === 0) return;
 
-		const newDoc = {};
+		const doc = {};
 		for (const key of displayFields) {
 			if (key !== '_id' && key !== 'created_at' && key !== 'updated_at') {
-				newDoc[key] = '';
+				doc[key] = '';
 			}
 		}
+		newDocumentData = doc;
+		showAddModal = true;
+	}
 
-		dispatch('add', newDoc);
+	function handleAddSave(doc) {
+		dispatch('add', doc);
+		showAddModal = false;
+		newDocumentData = null;
+	}
+
+	function handleModalCancel() {
+		showAddModal = false;
+		newDocumentData = null;
 	}
 
 	function handleSave(doc) {
@@ -78,6 +97,38 @@
 			on:delete={(e) => handleDelete(e.detail)}
 		/>
 	</div>
+{/if}
+
+{#if showAddModal && newDocumentData}
+	{#if isMessageRoute}
+		<MessageEditModal
+			doc={newDocumentData}
+			columns={orderedFields}
+			on:save={(e) => handleAddSave(e.detail)}
+			on:cancel={handleModalCancel}
+		/>
+	{:else if selectedCollection === 'keyboards'}
+		<KeyboardEditModal
+			doc={newDocumentData}
+			columns={orderedFields}
+			on:save={(e) => handleAddSave(e.detail)}
+			on:cancel={handleModalCancel}
+		/>
+	{:else if selectedCollection === 'handlers'}
+		<HandlerEditModal
+			doc={newDocumentData}
+			columns={orderedFields}
+			on:save={(e) => handleAddSave(e.detail)}
+			on:cancel={handleModalCancel}
+		/>
+	{:else}
+		<DocumentEditModal
+			doc={newDocumentData}
+			columns={orderedFields}
+			on:save={(e) => handleAddSave(e.detail)}
+			on:cancel={handleModalCancel}
+		/>
+	{/if}
 {/if}
 
 <style>
