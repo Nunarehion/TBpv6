@@ -173,7 +173,7 @@
 		}
 
 		.window {
-			padding: 0;
+			padding: 0 !important;
 			grid-column: 2 / 3;
 			grid-row: 2 / 3;
 		}
