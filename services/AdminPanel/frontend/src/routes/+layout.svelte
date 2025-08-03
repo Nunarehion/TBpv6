@@ -125,7 +125,6 @@
 	}
 
 	.window {
-		padding: 2rem;
 		background-color: #1e2630;
 		border: 1px solid var(--border-gray);
 		grid-column: 1 / -1;
@@ -173,7 +172,6 @@
 		}
 
 		.window {
-			padding: 0 !important;
 			grid-column: 2 / 3;
 			grid-row: 2 / 3;
 		}

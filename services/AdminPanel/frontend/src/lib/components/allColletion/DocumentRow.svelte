@@ -290,5 +290,9 @@
 		.select-cell {
 			display: none;
 		}
+		span {
+			display: block;
+			padding: 0.5 rem;
+		}
 	}
 </style>
