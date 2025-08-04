@@ -1,21 +1,16 @@
+import { error } from '@sveltejs/kit';
 import mongoose from '$lib/server/mongoService';
 
-export async function post({ params, request }) {
-    const collectionName = params.collectionName;
-    const documentData = await request.json();
-
+export async function load({ fetch }) {
     try {
-        const collection = mongoose.connection.db.collection(collectionName);
-        const result = await collection.insertOne(documentData);
+        const collections = await mongoose.connection.db.listCollections().toArray();
+        const collectionNames = collections.map(c => c.name);
+
         return {
-            status: 200,
-            body: { message: 'Документ успешно сохранен!', id: result.insertedId },
+            collections: collectionNames,
         };
-    } catch (error) {
-        console.error('Ошибка при сохранении документа:', error);
-        return {
-            status: 500,
-            body: { error: 'Ошибка при сохранении документа.' },
-        };
+    } catch (e) {
+        console.error('Error in +page.server.js load function:', e);
+        throw error(500, 'Failed to load collections. Internal server error.');
     }
 }
