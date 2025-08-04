@@ -35,7 +35,26 @@
     }
 
     async function saveDocument(collectionName, documentData) {
-        console.log(`Saving document in ${collectionName}:`, documentData);
+        try {
+            const response = await fetch(`/api/${encodeURIComponent(collectionName)}/save`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(documentData),
+            });
+
+            if (!response.ok) {
+                const errData = await response.json();
+                throw new Error(errData.error || `HTTP error! Status: ${response.status}`);
+            }
+
+            const result = await response.json();
+            alert(result.message || 'Документ успешно сохранен!');
+        } catch (error) {
+            console.error('Ошибка при сохранении документа:', error);
+            alert('Ошибка при сохранении документа: ' + error.message);
+        }
     }
 
     onMount(() => {
@@ -63,9 +82,7 @@
             a.remove();
             window.URL.revokeObjectURL(url);
             alert('Резервная копия успешно экспортирована!');
-        } catch (e) {
-            console.error('Ошибка экспорта:', e);
-            alert('Ошибка при экспорте резервной копии: ' + e.message);
+        } catch (            alert('Ошибка при экспорте резервной копии: ' + e.message);
         }
     }
 
@@ -178,3 +195,4 @@
         border-color: var(--border-gray);
     }
 </style>
+
