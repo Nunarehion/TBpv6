@@ -155,3 +155,6 @@
         white-space: pre-wrap;
         word-break: break-all;
         overflow-x: auto;
+        border: 1px solid var(--border-gray);
+    }
+</style>
