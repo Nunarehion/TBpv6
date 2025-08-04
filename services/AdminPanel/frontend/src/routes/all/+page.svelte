@@ -96,22 +96,26 @@
         formData.append('backupFile', backupFile[0]);
 
         try {
-            const res = await fetch('/api/backup', {
-                method: 'POST',
-                body: formData
-            });
+    const res = await fetch('/api/backup');
+    if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.error || `HTTP error! Status: ${res.status}`);
+    }
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `backup_${new Date().toISOString()}.gz`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(url);
+    alert('Резервная копия успешно экспортирована!');
+} catch (e) {
+    console.error('Ошибка при экспорте:', e);
+    alert('Ошибка при экспорте резервной копии: ' + e.message);
+}
 
-            if (!res.ok) {
-                const errData = await res.json();
-                throw new Error(errData.error || `HTTP error! Status: ${res.status}`);
-            }
-
-            const result = await res.json();
-            alert(result.message);
-        } catch (e) {
-            console.error('Ошибка импорта:', e);
-            alert('Ошибка при импорте резервной копии: ' + e.message);
-        }
     }
 </script>
 
