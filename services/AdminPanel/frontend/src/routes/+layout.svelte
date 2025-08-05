@@ -130,7 +130,6 @@
 		border: 1px solid var(--border-gray);
 		grid-column: 1 / -1;
 		grid-row: 2 / 3;
-		overflow-y: auto;
 	}
 
 	.hamburger-menu {

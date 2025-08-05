@@ -145,16 +145,15 @@ button:disabled {
 h1 {
 	display: flex;
 	align-items: center;
-	/* margin-left: auto; */
-	margin: 0 2rem ;
+	margin: 2rem ;
 	padding: 1rem 2rem;
 	height: fit-content;
-	outline: 1px solid var(--border-gray);
+	/* outline: 1px solid var(--border-gray); */
 	font-size: 2rem;
 	color: var(--gray-text);
 	border-radius: 8px;
 }
 
 .window {
-	display: grid;
+	overflow: auto;
 }
