@@ -157,3 +157,7 @@ h1 {
 .window {
 	overflow: auto;
 }
+
+section {
+	margin: 0 2rem;
+}
