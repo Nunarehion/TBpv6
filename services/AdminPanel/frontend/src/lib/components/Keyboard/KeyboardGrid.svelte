@@ -4,6 +4,10 @@
     export let buttons = [];
     export let availableButtons = [];
 
+    function findButtonById(buttonId) {
+        return availableButtons.find(b => b._id === buttonId);
+    }
+
     function handleDragStart(event, button, rowIdx, btnIdx, isNew) {
         const data = {
             button: button,
@@ -85,25 +89,23 @@
             on:drop={(e) => handleDrop(e, rowIdx, -1)}
         >
             {#each row as buttonId, btnIdx}
-                {#let button = availableButtons.find(b => b._id === buttonId)}
-                    {#if button}
-                        <div
-                            class="keyboard-button"
-                            draggable="true"
-                            on:dragstart={(e) => handleDragStart(e, button, rowIdx, btnIdx, false)}
-                            on:dragover={handleDragOver}
-                            on:drop={(e) => handleDrop(e, rowIdx, btnIdx)}
+                {#if findButtonById(buttonId) as button}
+                    <div
+                        class="keyboard-button"
+                        draggable="true"
+                        on:dragstart={(e) => handleDragStart(e, button, rowIdx, btnIdx, false)}
+                        on:dragover={handleDragOver}
+                        on:drop={(e) => handleDrop(e, rowIdx, btnIdx)}
+                    >
+                        <span>{button.text || 'Нет текста'}</span>
+                        <span class="callback-data-display">{button.callback_data || 'Нет данных'}</span>
+                        <button
+                            type="button"
+                            class="remove-button"
+                            on:click={() => removeButton(rowIdx, btnIdx)}>&times;</button
                         >
-                            <span>{button.text || 'Нет текста'}</span>
-                            <span class="callback-data-display">{button.callback_data || 'Нет данных'}</span>
-                            <button
-                                type="button"
-                                class="remove-button"
-                                on:click={() => removeButton(rowIdx, btnIdx)}>&times;</button
-                            >
-                        </div>
-                    {/if}
-                {/let}
+                    </div>
+                {/if}
             {/each}
             {#if row.length === 0}
                 <div
@@ -120,7 +122,10 @@
                     class="merge-row-button"
                     on:click={() => mergeRowWithPrevious(rowIdx)}
                 >
-
+                    Слить с предыдущей строкой
+                </button>
+            {/if}
+        </div>
 
 
 <style>
