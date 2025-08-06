@@ -1,7 +1,8 @@
 <script>
     import { createEventDispatcher } from 'svelte';
 
-    let { buttons = [], availableButtons = [] } = $props();
+    export let buttons = [];
+    export let availableButtons = [];
 
     function handleDragStart(event, button, rowIdx, btnIdx, isNew) {
         const data = {
@@ -122,17 +123,7 @@
             {/if}
         </div>
     {/each}
-    <div class="add-row-drop-zone" on:dragover={handleDragOver} on:drop={(e) => handleDrop(e, buttons.length)}>
-        Перетащите кнопку сюда, чтобы создать новую строку
-    </div>
-    {#if buttons.length === 0}
-        <div
-            class="empty-keyboard-drop-target"
-            on:dragover={handleDragOver}
-            on:drop={(e) => handleDrop(e, -1)}
-        ></div>
-    {/if}
-</div>
+    <div class="add-row-drop-zone" on:drag
 
 
 
