@@ -76,16 +76,15 @@
     }
 </script>
 
-<div class="form-group keyboard-builder-section">
-    <label>Расположение кнопок:</label>
-    <div class="keyboard-preview">
-        {#each buttons as row, rowIdx}
-            <div
-                class="button-row"
-                on:dragover={handleDragOver}
-                on:drop={(e) => handleDrop(e, rowIdx, -1)}
-            >
-                {#each row as button, btnIdx}
+<div class="keyboard-preview">
+    {#each buttons as row, rowIdx}
+        <div
+            class="button-row"
+            on:dragover={handleDragOver}
+            on:drop={(e) => handleDrop(e, rowIdx, -1)}
+        >
+            {#each row as buttonId, btnIdx}
+                {#let button = availableButtons.find(b => b._id === buttonId)}
                     <div
                         class="keyboard-button"
                         draggable="true"
@@ -93,47 +92,48 @@
                         on:dragover={handleDragOver}
                         on:drop={(e) => handleDrop(e, rowIdx, btnIdx)}
                     >
-                        <span>{button.text || 'Нет текста'}</span>
-                        <span class="callback-data-display">{button.callback_data || 'Нет данных'}</span>
+                        <span>{button ? button.text : 'Нет текста'}</span>
+                        <span class="callback-data-display">{button ? button.callback_data : 'Нет данных'}</span>
                         <button
                             type="button"
                             class="remove-button"
                             on:click={() => removeButton(rowIdx, btnIdx)}>&times;</button
                         >
                     </div>
-                {/each}
-                {#if row.length === 0}
-                    <div
-                        class="empty-drop-target"
-                        on:dragover={handleDragOver}
-                        on:drop={(e) => handleDrop(e, rowIdx, -1)}
-                    >
-                        Перетащите кнопки сюда, чтобы добавить в эту строку
-                    </div>
-                {/if}
-                {#if buttons.length > 1 && rowIdx > 0}
-                    <button
-                        type="button"
-                        class="merge-row-button"
-                        on:click={() => mergeRowWithPrevious(rowIdx)}
-                    >
-                        Слить с предыдущей строкой
-                    </button>
-                {/if}
-            </div>
-        {/each}
-        <div class="add-row-drop-zone" on:dragover={handleDragOver} on:drop={(e) => handleDrop(e, buttons.length)}>
-            Перетащите кнопку сюда, чтобы создать новую строку
+                {/let}
+            {/each}
+            {#if row.length === 0}
+                <div
+                    class="empty-drop-target"
+                    on:dragover={handleDragOver}
+                    on:drop={(e) => handleDrop(e, rowIdx, -1)}
+                >
+                    Перетащите кнопки сюда, чтобы добавить в эту строку
+                </div>
+            {/if}
+            {#if buttons.length > 1 && rowIdx > 0}
+                <button
+                    type="button"
+                    class="merge-row-button"
+                    on:click={() => mergeRowWithPrevious(rowIdx)}
+                >
+                    Слить с предыдущей строкой
+                </button>
+            {/if}
         </div>
-        {#if buttons.length === 0}
-            <div
-                class="empty-keyboard-drop-target"
-                on:dragover={handleDragOver}
-                on:drop={(e) => handleDrop(e, -1)}
-            ></div>
-        {/if}
+    {/each}
+    <div class="add-row-drop-zone" on:dragover={handleDragOver} on:drop={(e) => handleDrop(e, buttons.length)}>
+        Перетащите кнопку сюда, чтобы создать новую строку
     </div>
+    {#if buttons.length === 0}
+        <div
+            class="empty-keyboard-drop-target"
+            on:dragover={handleDragOver}
+            on:drop={(e) => handleDrop(e, -1)}
+        ></div>
+    {/if}
 </div>
+
 
 <style>
     .keyboard-builder-section {
