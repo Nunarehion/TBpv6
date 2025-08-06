@@ -84,7 +84,7 @@
             on:drop={(e) => handleDrop(e, rowIdx, -1)}
         >
             {#each row as buttonId, btnIdx}
-                {#let button = availableButtons.find(b => b._id === buttonId)}
+                {#if availableButtons.find(b => b._id === buttonId) as button}
                     <div
                         class="keyboard-button"
                         draggable="true"
@@ -92,15 +92,15 @@
                         on:dragover={handleDragOver}
                         on:drop={(e) => handleDrop(e, rowIdx, btnIdx)}
                     >
-                        <span>{button ? button.text : 'Нет текста'}</span>
-                        <span class="callback-data-display">{button ? button.callback_data : 'Нет данных'}</span>
+                        <span>{button.text || 'Нет текста'}</span>
+                        <span class="callback-data-display">{button.callback_data || 'Нет данных'}</span>
                         <button
                             type="button"
                             class="remove-button"
                             on:click={() => removeButton(rowIdx, btnIdx)}>&times;</button
                         >
                     </div>
-                {/let}
+                {/if}
             {/each}
             {#if row.length === 0}
                 <div
@@ -133,6 +133,7 @@
         ></div>
     {/if}
 </div>
+
 
 
 <style>
