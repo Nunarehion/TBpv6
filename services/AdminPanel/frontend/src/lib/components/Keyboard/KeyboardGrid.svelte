@@ -89,7 +89,8 @@
             on:drop={(e) => handleDrop(e, rowIdx, -1)}
         >
             {#each row as buttonId, btnIdx}
-                {#if findButtonById(buttonId) as button}
+                {#if findButtonById(buttonId)}
+                    {@const button = findButtonById(buttonId)}
                     <div
                         class="keyboard-button"
                         draggable="true"
@@ -126,7 +127,8 @@
                 </button>
             {/if}
         </div>
-
+    {/each}
+</div>
 
 <style>
     .keyboard-builder-section {
