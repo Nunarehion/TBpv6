@@ -1,3 +1,4 @@
+
 <script>
     import { createEventDispatcher } from 'svelte';
 
@@ -123,8 +124,7 @@
             {/if}
         </div>
     {/each}
-    <div class="add-row-drop-zone" on:drag
-
+    <div class="add-row-drop-zone" on:dragover={handleDragOver} on:drop={(e) => handleDrop(e, buttons
 
 
 <style>
