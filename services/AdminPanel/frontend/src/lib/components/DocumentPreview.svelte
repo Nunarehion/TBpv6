@@ -4,7 +4,7 @@
 
 	import DocumentEditModal from './allColletion/DocumentEditModal.svelte';
 	import MessageEditModal from './allColletion/MessageEditModal.svelte';
-	import KeyboardEditModal from './allColletion/KeyboardEditModal.svelte';
+	import KeyboardEditModal from './Keyboard/KeyboardEditModal.svelte';
 	import HandlerEditModal from './allColletion/HandlerEditModal.svelte';
 
 	let {

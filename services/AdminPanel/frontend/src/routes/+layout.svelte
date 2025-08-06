@@ -125,7 +125,7 @@
 		grid-row: 1 / 2;
 	}
 
-	.window {
+	.window {   
 		background-color: #1e2630;
 		border: 1px solid var(--border-gray);
 		grid-column: 1 / -1;

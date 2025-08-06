@@ -2,7 +2,7 @@
 	import { createEventDispatcher } from 'svelte';
 	import DocumentEditModal from './DocumentEditModal.svelte';
 	import MessageEditModal from './MessageEditModal.svelte';
-	import KeyboardEditModal from './KeyboardEditModal.svelte';
+	import KeyboardEditModal from '../Keyboard/KeyboardEditModal.svelte';
 
 	import HandlerEditModal from './HandlerEditModal.svelte';
 	import Checkbox from '../allColletion/Checkbox.svelte';

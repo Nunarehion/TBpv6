@@ -1,7 +1,7 @@
     <script>
         import { createEventDispatcher, onMount, tick } from 'svelte';
         import ToggleSwitch from '$lib/components/ToggleSwitch.svelte';
-        import KeyboardEditModal from '$lib/components/allColletion/KeyboardEditModal.svelte';
+        import KeyboardEditModal from '$lib/components/Keyboard/KeyboardEditModal.svelte';
         import ImagePickerModal from '$lib/components/ImagePickerModal.svelte';
 
         let { doc, columns } = $props();
