@@ -109,6 +109,9 @@
     }
 
     function handleTouchStart(event, button, rowIdx = -1, btnIdx = -1, isNew = false) {
+        if (event.target.tagName.toLowerCase() === 'button') {
+            return;
+        }
         event.preventDefault();
         const touch = event.touches[0];
         const target = event.currentTarget;
@@ -135,6 +138,7 @@
     function handleTouchMove(event) {
         if (!touchButtonClone) return;
 
+        event.preventDefault();
         const touch = event.touches[0];
         touchButtonClone.style.left = `${touch.pageX - touchButtonClone.offsetWidth / 2}px`;
         touchButtonClone.style.top = `${touch.pageY - touchButtonClone.offsetHeight / 2}px`;
@@ -387,7 +391,7 @@
 <div
     class="modal-overlay"
     transition:slide
-    on:touchmove|preventDefault={handleTouchMove}
+    on:touchmove={handleTouchMove}
     on:touchend|preventDefault={handleMoveEnd}
     on:touchcancel|preventDefault={handleMoveEnd}
 >
@@ -565,7 +569,6 @@
         justify-content: center;
         align-items: center;
         z-index: 1000;
-        touch-action: none;
     }
 
     .modal-content {
