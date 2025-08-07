@@ -73,7 +73,7 @@
 		<div class="overlay" on:click={toggleSidebar}></div>
 	{/if}
 
-	<div class="hamburger-menu" on:click={toggleSidebar}>
+	<div class="hamburger-menu" hidden={sidebarOpen} on:click={toggleSidebar}>
 		<svg
 			xmlns="http://www.w3.org/2000/svg"
 			width="24"
@@ -114,18 +114,21 @@
 		background: var(--first-color);
 		height: 100vh;
 		height: 100dvh;
+					
 	}
 
 	nav {
 		display: flex;
 		gap: 1rem;
-		padding: 1rem;
+		padding: 2rem;
 		background: var(--first-color);
 		grid-column: 1 / -1;
 		grid-row: 1 / 2;
 	}
 
 	.window {   
+		display: flex;
+		flex-direction: column;
 		background-color: #1e2630;
 		border: 1px solid var(--border-gray);
 		grid-column: 1 / -1;
@@ -153,7 +156,7 @@
 
 	@media (min-width: 768px) {
 		.wrap {
-			padding: 0.75rem;
+
 			grid-template-columns: 300px 1fr;
 		}
 
@@ -174,6 +177,9 @@
 		.window {
 			grid-column: 2 / 3;
 			grid-row: 2 / 3;
+		}
+		.hamburger-menu {
+			display: none;
 		}
 	}
 </style>

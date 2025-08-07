@@ -135,5 +135,11 @@
 	.wrap {
 		display: grid;
 		padding: 2rem;
+		overflow: hidden;
+	}
+	@media (max-width: 768px) {
+		.wrap {
+			padding: 1.5rem;
+		}
 	}
 </style>

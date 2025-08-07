@@ -62,4 +62,9 @@
 		pointer-events: none;
 		opacity: 0.5;
 	}
+	@media (max-width: 768px) {
+		.search-input-container {
+			max-width: 100%;
+		}
+	}
 </style>

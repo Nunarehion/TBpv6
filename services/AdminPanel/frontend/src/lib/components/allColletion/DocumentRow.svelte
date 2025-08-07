@@ -126,9 +126,6 @@
 		background-color: var(--first-color);
 	}
 
-	.table-row:hover {
-		background-color: var(--hover-color);
-	}
 
 	.table-cell {
 		padding: 0.8rem 1rem;
@@ -253,16 +250,18 @@
 		.table-row {
 			display: block;
 			margin-bottom: 1rem;
-			border-bottom: 2px solid var(--action-button-color);
+			border: 1px solid var(--border-gray);
+			/* border-bottom: 2px solid var(--action-button-color); */
 			border-radius: 8px;
 			padding: 1rem;
 		}
 
 		.table-cell {
-			display: block;
+			display: grid;
+			grid-template-columns: .2fr 1fr;
 			width: 100%;
 			text-align: left;
-			padding: 0.5rem 0;
+			padding: 1rem;
 			white-space: normal;
 			overflow: visible;
 			text-overflow: clip;
@@ -289,10 +288,6 @@
 		}
 		.select-cell {
 			display: none;
-		}
-		span {
-			display: block;
-			padding: 0.5rem;
 		}
 	}
 </style>
