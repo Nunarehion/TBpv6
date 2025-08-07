@@ -12,9 +12,28 @@
 		name: doc.name || `keyboard_${Math.random().toString(36).substring(2, 9)}`,
 		buttons:
 			doc.buttons && Array.isArray(doc.buttons)
-				? doc.buttons.map((row) => (Array.isArray(row) ? row.map((btn) => ({ id: btn.id })) : []))
-				: []
+				? doc.buttons.map((row) =>
+						Array.isArray(row)
+							? row.filter((btn) => btn && btn.id).map((btn) => ({ id: btn.id }))
+							: []
+					)
+				: [],
+		created_at: doc.created_at || new Date().toISOString()
 	});
+
+	function formatDate(dateString) {
+		if (!dateString) return 'Дата не указана';
+		const date = new Date(dateString);
+		const options = {
+			year: 'numeric',
+			month: 'long',
+			day: 'numeric',
+			hour: '2-digit',
+			minute: '2-digit',
+			second: '2-digit'
+		};
+		return date.toLocaleDateString('ru-RU', options);
+	}
 
 	let draggedButton = $state(null);
 	let draggedButtonSourceRow = $state(null);
@@ -334,7 +353,18 @@
 				throw new Error(errorData.message || 'Ошибка при создании кнопки на сервере.');
 			}
 
-			await fetchAvailableButtons();
+			const newButtonDoc = await response.json();
+			const newButton = {
+				id: newButtonDoc.insertedId,
+				text: newButtonText,
+				callback_data: newButtonCallbackData
+			};
+
+			availableButtons = [newButton, ...availableButtons];
+
+			const newButtons = [...editableDoc.buttons];
+			newButtons.push([{ id: newButton.id }]);
+			editableDoc.buttons = newButtons;
 
 			newButtonText = '';
 			newButtonCallbackData = '';
@@ -361,168 +391,164 @@
 >
 	<div class="modal-content">
 		<h2>Редактировать клавиатуру</h2>
-		<form on:submit|preventDefault={save}>
-			{#each columns as col}
-				{#if col !== '_id' && col !== 'buttons'}
-					<div class="form-group">
-						<label for={col}>{col.replace(/_/g, ' ')}:</label>
-						<input
-							type="text"
-							id={col}
-							bind:value={editableDoc[col]}
-							on:input={(e) => handleInput(col, e)}
-						/>
-					</div>
-				{/if}
-			{/each}
+		<div class="scroll-container">
+			<form on:submit|preventDefault={save}>
+				{#each columns as col}
+					{#if col !== '_id' && col !== 'buttons' && col !== 'created_at'}
+						<div class="form-group">
+							<label for={col}>{col.replace(/_/g, ' ')}:</label>
+							<input
+								type="text"
+								id={col}
+								bind:value={editableDoc[col]}
+								on:input={(e) => handleInput(col, e)}
+							/>
+						</div>
+					{/if}
+				{/each}
 
-			<div class="form-group keyboard-builder-section">
-				<label>Расположение кнопок:</label>
-				<div class="keyboard-preview">
-					{#each editableDoc.buttons as row, rowIdx}
-						<div
-							class="button-row"
-							on:dragover={handleDragOver}
-							on:drop={(e) => handleDrop(e, rowIdx, -1)}
-							on:touchstart|preventDefault={(e) => {
-								if (row.length === 0) {
-									handleDrop(e, rowIdx, -1);
-								}
-							}}
-						>
-							{#each row as button, btnIdx}
-								{@const buttonData = getButtonData(button.id)}
-								<div
-									class="keyboard-button"
-									draggable="true"
-									on:dragstart={(e) => handleDragStart(e, button, rowIdx, btnIdx, false)}
-									on:dragover={handleDragOver}
-									on:drop={(e) => handleDrop(e, rowIdx, btnIdx)}
-									on:touchstart={(e) => handleTouchStart(e, button, rowIdx, btnIdx, false)}
-								>
-									<span>{buttonData.text}</span>
-									<span class="callback-data-display">{buttonData.callback_data}</span>
+				<div class="form-group date-display">
+					<label>Дата создания:</label>
+					<p class="italic-text">{formatDate(editableDoc.created_at)}</p>
+				</div>
+
+				<div class="form-group keyboard-builder-section">
+					<label>Расположение кнопок:</label>
+					<div class="keyboard-preview">
+						{#each editableDoc.buttons as row, rowIdx}
+							<div
+								class="button-row"
+								on:dragover={handleDragOver}
+								on:drop={(e) => handleDrop(e, rowIdx, -1)}
+								on:touchstart|preventDefault={(e) => {
+									if (row.length === 0) {
+										handleDrop(e, rowIdx, -1);
+									}
+								}}
+							>
+								{#each row as button, btnIdx}
+									{@const buttonData = getButtonData(button.id)}
+									<div
+										class="keyboard-button"
+										draggable="true"
+										on:dragstart={(e) => handleDragStart(e, button, rowIdx, btnIdx, false)}
+										on:dragover={handleDragOver}
+										on:drop={(e) => handleDrop(e, rowIdx, btnIdx)}
+										on:touchstart={(e) => handleTouchStart(e, button, rowIdx, btnIdx, false)}
+									>
+										<span>{buttonData.text}</span>
+										<span class="callback-data-display">{buttonData.callback_data}</span>
+										<button
+											type="button"
+											class="remove-button"
+											on:click={() => removeButton(rowIdx, btnIdx)}>&times;</button
+										>
+									</div>
+								{/each}
+								{#if row.length === 0}
+									<div
+										class="empty-drop-target"
+										on:dragover={handleDragOver}
+										on:drop={(e) => handleDrop(e, rowIdx, -1)}
+										on:touchend|preventDefault={(e) => handleMoveEnd(e.target)}
+									>
+										Перетащите кнопки сюда, чтобы добавить в эту строку
+									</div>
+								{/if}
+								{#if editableDoc.buttons.length > 1 && rowIdx > 0}
 									<button
 										type="button"
-										class="remove-button"
-										on:click={() => removeButton(rowIdx, btnIdx)}>&times;</button
+										class="merge-row-button"
+										on:click={() => mergeRowWithPrevious(rowIdx)}
 									>
-								</div>
-							{/each}
-							{#if row.length === 0}
-								<div
-									class="empty-drop-target"
-									on:dragover={handleDragOver}
-									on:drop={(e) => handleDrop(e, rowIdx, -1)}
-									on:touchend|preventDefault={(e) => handleMoveEnd(e.target)}
-								>
-									Перетащите кнопки сюда, чтобы добавить в эту строку
-								</div>
-							{/if}
-							{#if editableDoc.buttons.length > 1 && rowIdx > 0}
-								<button
-									type="button"
-									class="merge-row-button"
-									on:click={() => mergeRowWithPrevious(rowIdx)}
-								>
-									Слить с предыдущей строкой
-								</button>
-							{/if}
-						</div>
-					{/each}
-					<div
-						class="add-row-drop-zone"
-						on:dragover={handleDragOver}
-						on:drop={handleDropOnAddRow}
-						on:touchend|preventDefault={(e) => handleMoveEnd(e.target)}
-					>
-						Перетащите кнопку сюда, чтобы создать новую строку
-					</div>
-					{#if editableDoc.buttons.length === 0}
-						<div
-							class="empty-keyboard-drop-target"
-							on:dragover={handleDragOver}
-							on:drop={(e) => handleDrop(e, -1)}
-							on:touchend|preventDefault={(e) => handleMoveEnd(e.target)}
-						></div>
-					{/if}
-				</div>
-			</div>
-
-			<div class="form-group available-buttons-section">
-				<label>Доступные кнопки:</label>
-				<div
-					class="available-buttons-list"
-					on:dragover={handleDragOver}
-					on:drop={handleDropOnAvailableButtons}
-					on:touchend|preventDefault={(e) => handleMoveEnd(e.target)}
-				>
-					{#if loadingAvailableButtons}
-						<p>Загрузка доступных кнопок...</p>
-					{:else if errorAvailableButtons}
-						<p class="error-message">Ошибка загрузки кнопок: {errorAvailableButtons}</p>
-					{:else if availableButtons.length > 0}
-						{#each availableButtons as button (button.id)}
-							{@const buttonData = getButtonData(button.id)}
-							<div
-								class="available-button-wrapper"
-								draggable="true"
-								on:dragstart={(e) => handleDragStart(e, button, -1, -1, true)}
-								on:touchstart={(e) => handleTouchStart(e, button, -1, -1, true)}
-							>
-								<div class="available-button-content">
-									<span>{buttonData.text}</span>
-									<span class="callback-data-display">{buttonData.callback_data}</span>
-								</div>
-								<button
-									type="button"
-									class="add-to-new-row-button"
-									on:click={() => addAvailableButtonToNewRow(button)}
-								>
-									+
-								</button>
+										Слить с предыдущей строкой
+									</button>
+								{/if}
 							</div>
 						{/each}
-					{:else}
-						<p>Кнопки в коллекции 'кнопко' не найдены. Добавьте их сначала!</p>
-					{/if}
-				</div>
-				<div class="new-button-creator">
-					<input type="text" bind:value={newButtonText} placeholder="Текст новой кнопки" />
-					<input
-						type="text"
-						bind:value={newButtonCallbackData}
-						placeholder="Callback Data"
-						on:keydown={(e) => {
-							if (e.key === 'Enter') {
-								e.preventDefault();
-								createNewButton();
-							}
-						}}
-					/>
-					<button
-						type="button"
-						on:click={createNewButton}
-						class="create-new-button"
-						disabled={creatingNewButton}
-					>
-						{#if creatingNewButton}
-							Создание...
-						{:else}
-							Создать новую кнопку
+						<div
+							class="add-row-drop-zone"
+							on:dragover={handleDragOver}
+							on:drop={handleDropOnAddRow}
+							on:touchend|preventDefault={(e) => handleMoveEnd(e.target)}
+						>
+							Перетащите кнопку сюда, чтобы создать новую строку
+						</div>
+						{#if editableDoc.buttons.length === 0}
+							<div
+								class="empty-keyboard-drop-target"
+								on:dragover={handleDragOver}
+								on:drop={(e) => handleDrop(e, -1)}
+								on:touchend|preventDefault={(e) => handleMoveEnd(e.target)}
+							></div>
 						{/if}
-					</button>
+					</div>
 				</div>
-				{#if newButtonError}
-					<p class="error-message">{newButtonError}</p>
-				{/if}
-			</div>
 
-			<div class="modal-actions">
-				<button type="submit" class="action-button save-button">Сохранить</button>
-				<button type="button" on:click={cancel} class="action-button cancel-button">Отмена</button>
-			</div>
-		</form>
+				<div class="form-group available-buttons-section">
+					<label>Доступные кнопки:</label>
+					<div
+						class="available-buttons-list"
+						on:dragover={handleDragOver}
+						on:drop={handleDropOnAvailableButtons}
+						on:touchend|preventDefault={(e) => handleMoveEnd(e.target)}
+					>
+						{#if loadingAvailableButtons}
+							<p>Загрузка доступных кнопок...</p>
+						{:else if errorAvailableButtons}
+							<p class="error-message">Ошибка загрузки кнопок: {errorAvailableButtons}</p>
+						{:else if availableButtons.length > 0}
+							{#each availableButtons as button (button.id)}
+								{@const buttonData = getButtonData(button.id)}
+								<div
+									class="available-button-wrapper"
+									draggable="true"
+									on:dragstart={(e) => handleDragStart(e, button, -1, -1, true)}
+									on:touchstart={(e) => handleTouchStart(e, button, -1, -1, true)}
+								>
+									<div class="available-button-content">
+										<span>{buttonData.text}</span>
+										<span class="callback-data-display">{buttonData.callback_data}</span>
+									</div>
+									<button
+										type="button"
+										class="add-to-new-row-button"
+										on:click={() => addAvailableButtonToNewRow(button)}
+									>
+										+
+									</button>
+								</div>
+							{/each}
+						{:else}
+							<p>Кнопки в коллекции 'кнопко' не найдены. Добавьте их сначала!</p>
+						{/if}
+					</div>
+				</div>
+			</form>
+		</div>
+		<div class="new-button-creator">
+			<input type="text" bind:value={newButtonText} placeholder="Текст новой кнопки" />
+			<input type="text" bind:value={newButtonCallbackData} placeholder="Callback Data" />
+			<button
+				type="button"
+				on:click={createNewButton}
+				class="create-new-button"
+				disabled={creatingNewButton || !newButtonText || !newButtonCallbackData}
+			>
+				{#if creatingNewButton}
+					Создание...
+				{:else}
+					Создать новую кнопку
+				{/if}
+			</button>
+		</div>
+		{#if newButtonError}
+			<p class="error-message">{newButtonError}</p>
+		{/if}
+		<div class="modal-actions">
+			<button type="button" on:click={save} class="action-button save-button">Сохранить</button>
+			<button type="button" on:click={cancel} class="action-button cancel-button">Отмена</button>
+		</div>
 	</div>
 </div>
 
@@ -550,12 +576,15 @@
 		max-width: 800px;
 		color: var(--main-text);
 		border: 1px solid var(--border-gray);
-		overflow-y: auto;
+		overflow-y: hidden;
 		max-height: 90vh;
 		display: flex;
 		flex-direction: column;
 	}
-
+	.scroll-container {
+		overflow-y: auto;
+		flex: 1;
+	}
 	h2 {
 		color: var(--blue);
 		margin-top: 0;
@@ -588,6 +617,27 @@
 		outline: none;
 		border-color: var(--blue);
 		box-shadow: 0 0 0 2px rgba(var(--blue-rgb), 0.2);
+	}
+	.disabled-input {
+		background-color: var(--first-color);
+		color: var(--gray-text);
+		cursor: not-allowed;
+	}
+	.date-display {
+		display: flex;
+		opacity: 0.5;
+		gap: 2em;
+	}
+	.date-display p,
+	.date-display label {
+		margin-top: 0;
+		color: var(--gray-text);
+		font-weight: lighter;
+		font-style: italic;
+	}
+
+	.italic-text {
+		font-style: italic;
 	}
 
 	.modal-actions {
@@ -637,7 +687,6 @@
 		display: flex;
 		flex-direction: column;
 		gap: 0.5rem;
-		min-height: 100px;
 		border: 1px dashed var(--gray-text);
 		padding: 0.5rem;
 		border-radius: 5px;
@@ -687,9 +736,6 @@
 		display: block;
 		text-overflow: ellipsis;
 		overflow: hidden;
-	}
-	.keyboard-button span:first-child {
-		font-weight: bold;
 	}
 
 	.callback-data-display {
