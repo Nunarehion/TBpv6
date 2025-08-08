@@ -106,6 +106,11 @@
 	}
 
 	function handleTouchStart(event, button, rowIdx = -1, btnIdx = -1, isNew = false) {
+		if (event.target.closest('.remove-button')) {
+			removeButton(rowIdx, btnIdx);
+			return;
+		}
+
 		if (event.target.closest('button') && !event.target.closest('.keyboard-button')) {
 			return;
 		}
@@ -320,9 +325,11 @@
 
 	function removeButton(rowIdx, btnIdx) {
 		let newButtons = JSON.parse(JSON.stringify(editableDoc.buttons));
-		newButtons[rowIdx].splice(btnIdx, 1);
-		if (newButtons[rowIdx].length === 0) {
-			newButtons.splice(rowIdx, 1);
+		if (newButtons[rowIdx] && newButtons[rowIdx][btnIdx] !== undefined) {
+			newButtons[rowIdx].splice(btnIdx, 1);
+			if (newButtons[rowIdx].length === 0) {
+				newButtons.splice(rowIdx, 1);
+			}
 		}
 		editableDoc.buttons = newButtons;
 	}
@@ -464,7 +471,7 @@
 										<button
 											type="button"
 											class="remove-button"
-											on:click={() => removeButton(rowIdx, btnIdx)}>&times;</button
+											on:click|stopPropagation={() => removeButton(rowIdx, btnIdx)}>&times;</button
 										>
 									</div>
 								{/each}
