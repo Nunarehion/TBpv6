@@ -111,6 +111,11 @@
 			return;
 		}
 
+		if (event.target.closest('.add-to-new-row-button')) {
+			addAvailableButtonToNewRow(button);
+			return;
+		}
+
 		if (event.target.closest('button') && !event.target.closest('.keyboard-button')) {
 			return;
 		}
