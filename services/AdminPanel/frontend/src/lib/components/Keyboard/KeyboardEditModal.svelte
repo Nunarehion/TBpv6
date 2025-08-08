@@ -111,30 +111,59 @@
 	}
 
 	function handleTouchStart(event, button, rowIdx = -1, btnIdx = -1, isNew = false) {
-		if (event.target.closest('button')) {
+		if (event.target.closest('button') && !event.target.closest('.keyboard-button')) {
 			return;
 		}
-		event.preventDefault();
-		const touch = event.touches[0];
-		const target = event.currentTarget;
-		const rect = target.getBoundingClientRect();
 
-		handleMoveStart(button, rowIdx, btnIdx, isNew, rect);
+		let touchStartX = event.touches[0].clientX;
+		let touchStartY = event.touches[0].clientY;
+		let isDragging = false;
 
-		touchButtonClone = target.cloneNode(true);
-		document.body.appendChild(touchButtonClone);
+		const handleTapMove = (moveEvent) => {
+			const moveX = moveEvent.touches[0].clientX;
+			const moveY = moveEvent.touches[0].clientY;
 
-		Object.assign(touchButtonClone.style, {
-			position: 'absolute',
-			left: `${rect.left}px`,
-			top: `${rect.top}px`,
-			width: `${rect.width}px`,
-			height: `${rect.height}px`,
-			pointerEvents: 'none',
-			zIndex: '1001',
-			opacity: '0.8',
-			transform: 'scale(1.1)'
-		});
+			if (Math.abs(moveX - touchStartX) > 5 || Math.abs(moveY - touchStartY) > 5) {
+				isDragging = true;
+				event.preventDefault();
+
+				const target = event.currentTarget;
+				const rect = target.getBoundingClientRect();
+
+				handleMoveStart(button, rowIdx, btnIdx, isNew, rect);
+
+				touchButtonClone = target.cloneNode(true);
+				document.body.appendChild(touchButtonClone);
+
+				Object.assign(touchButtonClone.style, {
+					position: 'absolute',
+					left: `${rect.left}px`,
+					top: `${rect.top}px`,
+					width: `${rect.width}px`,
+					height: `${rect.height}px`,
+					pointerEvents: 'none',
+					zIndex: '1001',
+					opacity: '0.8',
+					transform: 'scale(1.1)'
+				});
+
+				handleTouchMove(moveEvent);
+
+				document.removeEventListener('touchmove', handleTapMove);
+			}
+		};
+
+		const handleTapEnd = (endEvent) => {
+			document.removeEventListener('touchmove', handleTapMove);
+			document.removeEventListener('touchend', handleTapEnd);
+
+			if (isDragging) {
+				handleMoveEnd(endEvent);
+			}
+		};
+
+		document.addEventListener('touchmove', handleTapMove);
+		document.addEventListener('touchend', handleTapEnd);
 	}
 
 	function handleTouchMove(event) {
