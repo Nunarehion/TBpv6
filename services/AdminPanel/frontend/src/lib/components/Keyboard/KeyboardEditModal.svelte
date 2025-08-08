@@ -556,8 +556,7 @@
 								</div>
 							{/each}
 						{:else}
-							<p>Кнопки в коллекции 'кнопко' не найдены.
-								Добавьте их сначала!</p>
+							<p>Кнопки в коллекции 'кнопко' не найдены. Добавьте их сначала!</p>
 						{/if}
 					</div>
 				</div>
@@ -829,6 +828,7 @@
 	}
 
 	.merge-row-button {
+		display: none;
 		background-color: #f0ad4e;
 		color: white;
 		border: none;
@@ -927,12 +927,11 @@
 
 	.new-button-creator input {
 		flex-grow: 1;
-		width: auto;
-		min-width: 120px;
 	}
 
 	.create-new-button {
 		background-color: var(--blue);
+		flex-grow: 1;
 		color: white;
 		border: none;
 		padding: 0.75rem 1rem;
@@ -958,5 +957,20 @@
 		border-radius: 5px;
 		margin-top: 0.5rem;
 		font-size: 0.9rem;
+	}
+
+	@media (max-width: 768px) {
+		.action-button {
+			transform: scale(0.85);
+			padding: 0.75rem 1.5rem;
+			border: none;
+			border-radius: 8px;
+			cursor: pointer;
+			font-size: 1rem;
+			transition: background-color 0.2s ease;
+		}
+		.modal-actions {
+			gap: -2rem;
+		}
 	}
 </style>
