@@ -2,11 +2,9 @@
 	import { createEventDispatcher } from 'svelte';
 	import { slide } from 'svelte/transition';
 	import { onMount } from 'svelte';
-
 	let { doc, columns = [] } = $props();
 
 	const dispatch = createEventDispatcher();
-
 	let editableDoc = $state({
 		...doc,
 		name: doc.name || `keyboard_${Math.random().toString(36).substring(2, 9)}`,
@@ -22,7 +20,6 @@
 				: [],
 		created_at: doc.created_at || new Date().toISOString()
 	});
-
 	function formatDate(dateString) {
 		if (!dateString) return 'Дата не указана';
 		const date = new Date(dateString);
@@ -50,8 +47,9 @@
 	let newButtonCallbackData = $state('');
 	let creatingNewButton = $state(false);
 	let newButtonError = $state(null);
-
 	let touchButtonClone = $state(null);
+	let touchMoveTarget = $state(null);
+	let touchSourceRect = $state(null);
 
 	async function fetchAvailableButtons() {
 		loadingAvailableButtons = true;
@@ -82,7 +80,6 @@
 	onMount(async () => {
 		await fetchAvailableButtons();
 	});
-
 	function getButtonData(buttonId) {
 		const button = availableButtons.find((b) => b.id === buttonId);
 		return {
@@ -95,47 +92,69 @@
 		editableDoc = { ...editableDoc, [field]: event.target.value };
 	}
 
-	function handleMoveStart(button, rowIdx, btnIdx, isNew) {
+	function handleMoveStart(button, rowIdx, btnIdx, isNew, rect) {
 		draggedButton = button;
 		draggedButtonSourceRow = rowIdx;
 		draggedButtonSourceIndex = btnIdx;
 		draggedButtonIsNew = isNew;
+		touchSourceRect = rect;
 	}
 
 	function handleDragStart(event, button, rowIdx = -1, btnIdx = -1, isNew = false) {
-		handleMoveStart(button, rowIdx, btnIdx, isNew);
+		handleMoveStart(button, rowIdx, btnIdx, isNew, event.target.getBoundingClientRect());
 		event.dataTransfer.effectAllowed = 'move';
 	}
 
 	function handleTouchStart(event, button, rowIdx = -1, btnIdx = -1, isNew = false) {
-		if (
-			event.target.closest('button.remove-button') ||
-			event.target.closest('button.add-to-new-row-button')
-		) {
+		if (event.target.closest('button') && !event.target.closest('.keyboard-button')) {
 			return;
 		}
 
-		event.preventDefault();
+		let touchStartX = event.touches[0].clientX;
+		let touchStartY = event.touches[0].clientY;
+		let isDragging = false;
+		const handleTapMove = (moveEvent) => {
+			const moveX = moveEvent.touches[0].clientX;
+			const moveY = moveEvent.touches[0].clientY;
+			if (Math.abs(moveX - touchStartX) > 5 || Math.abs(moveY - touchStartY) > 5) {
+				isDragging = true;
+				event.preventDefault();
 
-		const target = event.currentTarget;
-		const rect = target.getBoundingClientRect();
+				const target = event.currentTarget;
+				const rect = target.getBoundingClientRect();
 
-		handleMoveStart(button, rowIdx, btnIdx, isNew);
+				handleMoveStart(button, rowIdx, btnIdx, isNew, rect);
 
-		touchButtonClone = target.cloneNode(true);
-		document.body.appendChild(touchButtonClone);
+				touchButtonClone = target.cloneNode(true);
+				document.body.appendChild(touchButtonClone);
+				Object.assign(touchButtonClone.style, {
+					position: 'absolute',
+					left: `${rect.left}px`,
+					top: `${rect.top}px`,
+					width: `${rect.width}px`,
+					height: `${rect.height}px`,
+					pointerEvents: 'none',
+					zIndex: '1001',
+					opacity: '0.8',
+					transform: 'scale(1.1)'
+				});
 
-		Object.assign(touchButtonClone.style, {
-			position: 'absolute',
-			left: `${rect.left}px`,
-			top: `${rect.top}px`,
-			width: `${rect.width}px`,
-			height: `${rect.height}px`,
-			pointerEvents: 'none',
-			zIndex: '1001',
-			opacity: '0.8',
-			transform: 'scale(1.1)'
-		});
+				handleTouchMove(moveEvent);
+
+				document.removeEventListener('touchmove', handleTapMove);
+			}
+		};
+		const handleTapEnd = (endEvent) => {
+			document.removeEventListener('touchmove', handleTapMove);
+			document.removeEventListener('touchend', handleTapEnd);
+
+			if (isDragging) {
+				handleMoveEnd(endEvent);
+			}
+		};
+
+		document.addEventListener('touchmove', handleTapMove);
+		document.addEventListener('touchend', handleTapEnd);
 	}
 
 	function handleTouchMove(event) {
@@ -145,15 +164,15 @@
 		const touch = event.touches[0];
 		touchButtonClone.style.left = `${touch.pageX - touchButtonClone.offsetWidth / 2}px`;
 		touchButtonClone.style.top = `${touch.pageY - touchButtonClone.offsetHeight / 2}px`;
+
+		const targetElement = document.elementFromPoint(touch.clientX, touch.clientY);
+		touchMoveTarget = targetElement;
 	}
 
 	function handleMoveEnd(event) {
 		if (!draggedButton) return;
-
-		const touch = event.changedTouches ? event.changedTouches[0] : null;
-		const targetElement = touch
-			? document.elementFromPoint(touch.clientX, touch.clientY)
-			: event.target;
+		const touch = event.changedTouches[0];
+		const targetElement = document.elementFromPoint(touch.clientX, touch.clientY);
 
 		if (targetElement) {
 			if (targetElement.closest('.available-buttons-list')) {
@@ -163,7 +182,6 @@
 			} else {
 				const dropTargetBtn = targetElement.closest('.keyboard-button');
 				const dropTargetRow = targetElement.closest('.button-row');
-
 				if (dropTargetBtn) {
 					const dropTargetBtnWrapper = dropTargetBtn.parentNode;
 					const rowIdx = Array.from(dropTargetBtnWrapper.parentNode.children).indexOf(
@@ -174,8 +192,6 @@
 				} else if (dropTargetRow) {
 					const rowIdx = Array.from(dropTargetRow.parentNode.children).indexOf(dropTargetRow);
 					handleDrop({ preventDefault: () => {} }, rowIdx, -1);
-				} else if (targetElement.closest('.empty-keyboard-drop-target')) {
-					handleDrop({ preventDefault: () => {} }, -1, -1);
 				}
 			}
 		}
@@ -183,12 +199,14 @@
 		if (touchButtonClone) {
 			document.body.removeChild(touchButtonClone);
 			touchButtonClone = null;
+			touchMoveTarget = null;
 		}
 
 		draggedButton = null;
 		draggedButtonSourceRow = null;
 		draggedButtonSourceIndex = null;
 		draggedButtonIsNew = false;
+		touchSourceRect = null;
 	}
 
 	function handleDragOver(event) {
@@ -205,7 +223,6 @@
 
 		let sourceRowWasRemoved = false;
 		let originalDraggedButtonSourceRow = draggedButtonSourceRow;
-
 		if (!draggedButtonIsNew && draggedButtonSourceRow !== -1 && draggedButtonSourceIndex !== -1) {
 			if (
 				newButtons[draggedButtonSourceRow] &&
@@ -256,10 +273,8 @@
 	function handleDropOnAddRow(event) {
 		event.preventDefault();
 		if (!draggedButton) return;
-
 		let newButtons = JSON.parse(JSON.stringify(editableDoc.buttons));
 		const buttonToAdd = { id: draggedButton.id };
-
 		if (!draggedButtonIsNew && draggedButtonSourceRow !== -1 && draggedButtonSourceIndex !== -1) {
 			if (
 				newButtons[draggedButtonSourceRow] &&
@@ -352,7 +367,6 @@
 					callback_data: newButtonCallbackData.trim()
 				})
 			});
-
 			if (!response.ok) {
 				const errorData = await response.json();
 				throw new Error(errorData.message || 'Ошибка при создании кнопки на сервере.');
@@ -392,16 +406,15 @@
 	}
 </script>
 
-<div
-	class="modal-overlay"
-	transition:slide
-	on:touchmove={handleTouchMove}
-	on:touchend|preventDefault={handleMoveEnd}
-	on:touchcancel|preventDefault={handleMoveEnd}
->
+<div class="modal-overlay" transition:slide>
 	<div class="modal-content">
 		<h2>Редактировать клавиатуру</h2>
-		<div class="scroll-container">
+		<div
+			class="scroll-container"
+			on:touchmove={handleTouchMove}
+			on:touchend|preventDefault={handleMoveEnd}
+			on:touchcancel|preventDefault={handleMoveEnd}
+		>
 			<form on:submit|preventDefault={save}>
 				{#each columns as col}
 					{#if col !== '_id' && col !== 'buttons' && col !== 'created_at'}
@@ -430,6 +443,11 @@
 								class="button-row"
 								on:dragover={handleDragOver}
 								on:drop={(e) => handleDrop(e, rowIdx, -1)}
+								on:touchstart|preventDefault={(e) => {
+									if (row.length === 0) {
+										handleDrop(e, rowIdx, -1);
+									}
+								}}
 							>
 								{#each row as button, btnIdx}
 									{@const buttonData = getButtonData(button.id)}
@@ -455,6 +473,7 @@
 										class="empty-drop-target"
 										on:dragover={handleDragOver}
 										on:drop={(e) => handleDrop(e, rowIdx, -1)}
+										on:touchend|preventDefault={(e) => handleMoveEnd(e.target)}
 									>
 										Перетащите кнопки сюда, чтобы добавить в эту строку
 									</div>
@@ -474,6 +493,7 @@
 							class="add-row-drop-zone"
 							on:dragover={handleDragOver}
 							on:drop={handleDropOnAddRow}
+							on:touchend|preventDefault={(e) => handleMoveEnd(e.target)}
 						>
 							Перетащите кнопку сюда, чтобы создать новую строку
 						</div>
@@ -482,6 +502,7 @@
 								class="empty-keyboard-drop-target"
 								on:dragover={handleDragOver}
 								on:drop={(e) => handleDrop(e, -1)}
+								on:touchend|preventDefault={(e) => handleMoveEnd(e.target)}
 							></div>
 						{/if}
 					</div>
@@ -493,6 +514,7 @@
 						class="available-buttons-list"
 						on:dragover={handleDragOver}
 						on:drop={handleDropOnAvailableButtons}
+						on:touchend|preventDefault={(e) => handleMoveEnd(e.target)}
 					>
 						{#if loadingAvailableButtons}
 							<p>Загрузка доступных кнопок...</p>
@@ -522,7 +544,8 @@
 								</div>
 							{/each}
 						{:else}
-							<p>Кнопки в коллекции 'кнопко' не найдены. Добавьте их сначала!</p>
+							<p>Кнопки в коллекции 'кнопко' не найдены.
+								Добавьте их сначала!</p>
 						{/if}
 					</div>
 				</div>
