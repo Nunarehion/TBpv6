@@ -52,8 +52,6 @@
 	let newButtonError = $state(null);
 
 	let touchButtonClone = $state(null);
-	let touchMoveTarget = $state(null);
-	let touchSourceRect = $state(null);
 
 	async function fetchAvailableButtons() {
 		loadingAvailableButtons = true;
@@ -97,73 +95,47 @@
 		editableDoc = { ...editableDoc, [field]: event.target.value };
 	}
 
-	function handleMoveStart(button, rowIdx, btnIdx, isNew, rect) {
+	function handleMoveStart(button, rowIdx, btnIdx, isNew) {
 		draggedButton = button;
 		draggedButtonSourceRow = rowIdx;
 		draggedButtonSourceIndex = btnIdx;
 		draggedButtonIsNew = isNew;
-		touchSourceRect = rect;
 	}
 
 	function handleDragStart(event, button, rowIdx = -1, btnIdx = -1, isNew = false) {
-		handleMoveStart(button, rowIdx, btnIdx, isNew, event.target.getBoundingClientRect());
+		handleMoveStart(button, rowIdx, btnIdx, isNew);
 		event.dataTransfer.effectAllowed = 'move';
 	}
 
 	function handleTouchStart(event, button, rowIdx = -1, btnIdx = -1, isNew = false) {
-		if (event.target.closest('button') && !event.target.closest('.keyboard-button')) {
+		if (
+			event.target.closest('button.remove-button') ||
+			event.target.closest('button.add-to-new-row-button')
+		) {
 			return;
 		}
 
-		let touchStartX = event.touches[0].clientX;
-		let touchStartY = event.touches[0].clientY;
-		let isDragging = false;
+		event.preventDefault();
 
-		const handleTapMove = (moveEvent) => {
-			const moveX = moveEvent.touches[0].clientX;
-			const moveY = moveEvent.touches[0].clientY;
+		const target = event.currentTarget;
+		const rect = target.getBoundingClientRect();
 
-			if (Math.abs(moveX - touchStartX) > 5 || Math.abs(moveY - touchStartY) > 5) {
-				isDragging = true;
-				event.preventDefault();
+		handleMoveStart(button, rowIdx, btnIdx, isNew);
 
-				const target = event.currentTarget;
-				const rect = target.getBoundingClientRect();
+		touchButtonClone = target.cloneNode(true);
+		document.body.appendChild(touchButtonClone);
 
-				handleMoveStart(button, rowIdx, btnIdx, isNew, rect);
-
-				touchButtonClone = target.cloneNode(true);
-				document.body.appendChild(touchButtonClone);
-
-				Object.assign(touchButtonClone.style, {
-					position: 'absolute',
-					left: `${rect.left}px`,
-					top: `${rect.top}px`,
-					width: `${rect.width}px`,
-					height: `${rect.height}px`,
-					pointerEvents: 'none',
-					zIndex: '1001',
-					opacity: '0.8',
-					transform: 'scale(1.1)'
-				});
-
-				handleTouchMove(moveEvent);
-
-				document.removeEventListener('touchmove', handleTapMove);
-			}
-		};
-
-		const handleTapEnd = (endEvent) => {
-			document.removeEventListener('touchmove', handleTapMove);
-			document.removeEventListener('touchend', handleTapEnd);
-
-			if (isDragging) {
-				handleMoveEnd(endEvent);
-			}
-		};
-
-		document.addEventListener('touchmove', handleTapMove);
-		document.addEventListener('touchend', handleTapEnd);
+		Object.assign(touchButtonClone.style, {
+			position: 'absolute',
+			left: `${rect.left}px`,
+			top: `${rect.top}px`,
+			width: `${rect.width}px`,
+			height: `${rect.height}px`,
+			pointerEvents: 'none',
+			zIndex: '1001',
+			opacity: '0.8',
+			transform: 'scale(1.1)'
+		});
 	}
 
 	function handleTouchMove(event) {
@@ -173,16 +145,15 @@
 		const touch = event.touches[0];
 		touchButtonClone.style.left = `${touch.pageX - touchButtonClone.offsetWidth / 2}px`;
 		touchButtonClone.style.top = `${touch.pageY - touchButtonClone.offsetHeight / 2}px`;
-
-		const targetElement = document.elementFromPoint(touch.clientX, touch.clientY);
-		touchMoveTarget = targetElement;
 	}
 
 	function handleMoveEnd(event) {
 		if (!draggedButton) return;
 
-		const touch = event.changedTouches[0];
-		const targetElement = document.elementFromPoint(touch.clientX, touch.clientY);
+		const touch = event.changedTouches ? event.changedTouches[0] : null;
+		const targetElement = touch
+			? document.elementFromPoint(touch.clientX, touch.clientY)
+			: event.target;
 
 		if (targetElement) {
 			if (targetElement.closest('.available-buttons-list')) {
@@ -203,6 +174,8 @@
 				} else if (dropTargetRow) {
 					const rowIdx = Array.from(dropTargetRow.parentNode.children).indexOf(dropTargetRow);
 					handleDrop({ preventDefault: () => {} }, rowIdx, -1);
+				} else if (targetElement.closest('.empty-keyboard-drop-target')) {
+					handleDrop({ preventDefault: () => {} }, -1, -1);
 				}
 			}
 		}
@@ -210,14 +183,12 @@
 		if (touchButtonClone) {
 			document.body.removeChild(touchButtonClone);
 			touchButtonClone = null;
-			touchMoveTarget = null;
 		}
 
 		draggedButton = null;
 		draggedButtonSourceRow = null;
 		draggedButtonSourceIndex = null;
 		draggedButtonIsNew = false;
-		touchSourceRect = null;
 	}
 
 	function handleDragOver(event) {
@@ -459,11 +430,6 @@
 								class="button-row"
 								on:dragover={handleDragOver}
 								on:drop={(e) => handleDrop(e, rowIdx, -1)}
-								on:touchstart|preventDefault={(e) => {
-									if (row.length === 0) {
-										handleDrop(e, rowIdx, -1);
-									}
-								}}
 							>
 								{#each row as button, btnIdx}
 									{@const buttonData = getButtonData(button.id)}
@@ -489,7 +455,6 @@
 										class="empty-drop-target"
 										on:dragover={handleDragOver}
 										on:drop={(e) => handleDrop(e, rowIdx, -1)}
-										on:touchend|preventDefault={(e) => handleMoveEnd(e.target)}
 									>
 										Перетащите кнопки сюда, чтобы добавить в эту строку
 									</div>
@@ -509,7 +474,6 @@
 							class="add-row-drop-zone"
 							on:dragover={handleDragOver}
 							on:drop={handleDropOnAddRow}
-							on:touchend|preventDefault={(e) => handleMoveEnd(e.target)}
 						>
 							Перетащите кнопку сюда, чтобы создать новую строку
 						</div>
@@ -518,7 +482,6 @@
 								class="empty-keyboard-drop-target"
 								on:dragover={handleDragOver}
 								on:drop={(e) => handleDrop(e, -1)}
-								on:touchend|preventDefault={(e) => handleMoveEnd(e.target)}
 							></div>
 						{/if}
 					</div>
@@ -530,7 +493,6 @@
 						class="available-buttons-list"
 						on:dragover={handleDragOver}
 						on:drop={handleDropOnAvailableButtons}
-						on:touchend|preventDefault={(e) => handleMoveEnd(e.target)}
 					>
 						{#if loadingAvailableButtons}
 							<p>Загрузка доступных кнопок...</p>
