@@ -81,11 +81,11 @@
 
 {#if selectedCollection}
 	<div class="wrap">
-		{#if loading}
+		<!-- {#if loading}
 			<p>Загрузка документов...</p>
 		{:else if documents.length === 0}
 			<p>Документы отсутствуют.</p>
-		{/if}
+		{/if} -->
 
 		<DocumentsTable
 			{documents}
