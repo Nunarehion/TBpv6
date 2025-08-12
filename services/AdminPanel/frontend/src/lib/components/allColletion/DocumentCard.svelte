@@ -5,7 +5,6 @@
     const dispatch = createEventDispatcher();
 
     let localDoc = structuredClone(doc);
-    let expanded = false;
     let saving = false;
     let jsonString = JSON.stringify(localDoc, null, 2);
 
@@ -27,45 +26,27 @@
         dispatch('cancel');
     }
 
-    $: jsonString = JSON.stringify(localDoc, null, 2);
+    $: if (doc) {
+        jsonString = JSON.stringify(doc, null, 2);
+    }
 </script>
 
 <div class="card">
     <form on:submit|preventDefault={handleSave}>
-        {#each Object.entries(localDoc) as [key, value]}
-            <div class="field">
-                <label for={'field-' + key}>{key}</label>
-                <input
-                    id={'field-' + key}
-                    type="text"
-                    bind:value={localDoc[key]}
-                    readonly={key === '_id'}
-                />
-            </div>
-        {/each}
-
         <div class="field">
             <label for="json-editor">Редактировать JSON</label>
             <textarea
                 id="json-editor"
                 bind:value={jsonString}
-                rows="10"
-                style="resize: none;"
+                rows="20"
             ></textarea>
         </div>
 
         <div class="card-footer actions">
             <button type="submit" disabled={saving}>💾 Сохранить</button>
             <button type="button" on:click={handleCancel} disabled={saving}>Отмена</button>
-            <button type="button" on:click={() => (expanded = !expanded)}>
-                {expanded ? '▲ Скрыть JSON' : '▼ Показать JSON'}
-            </button>
         </div>
     </form>
-
-    {#if expanded}
-        <pre class="json">{JSON.stringify(doc, null, 2)}</pre>
-    {/if}
 </div>
 
 <style>
@@ -85,10 +66,12 @@
         flex-direction: column;
         height: 100%;
     }
+
     .field {
         margin-bottom: 0.75rem;
         display: flex;
         flex-direction: column;
+        flex-grow: 1;
     }
 
     label {
@@ -98,19 +81,20 @@
         margin-top: 0.5rem;
     }
 
-    input {
+    textarea {
+        flex-grow: 1;
         padding: 0.5rem 0.75rem;
         border: 1px solid var(--border-gray);
         border-radius: 0.25rem;
         background-color: var(--second-color);
         color: var(--main-text);
-        font-size: 1rem;
-    }
+        font-family: 'Fira Code', monospace;
+        font-size: 0.9rem;
+        resize: none;
+        overflow: auto;
+        height: 160px;
+        min-height: fit-content;
 
-    input[readonly] {
-        background-color: var(--second-color);
-        opacity: 0.7;
-        cursor: not-allowed;
     }
 
     .actions {
@@ -143,18 +127,5 @@
         background-color: var(--border-gray);
         cursor: not-allowed;
         opacity: 0.6;
-    }
-
-    .json {
-        background: var(--second-color);
-        padding: 1rem;
-        margin-top: 1rem;
-        border-radius: 0.5rem;
-        font-size: 0.85rem;
-        color: var(--main-text);
-        white-space: pre-wrap;
-        word-break: break-all;
-        overflow-x: auto;
-        border: 1px solid var(--border-gray);
     }
 </style>
