@@ -8,8 +8,8 @@
 	const dispatch = createEventDispatcher();
 
 	let editingId = $state(null);
-	let sortKey = $state(null);
-	let sortAsc = $state(true);
+	let sortKey = $state('_id'); 
+	let sortAsc = $state(false); 
 	let searchQuery = $state('');
 
 	function handleSearchInput(event) {
@@ -82,7 +82,6 @@
 	}
 
 	function onHeaderClick(col) {
-		if (col === '_id') return; // Запрещаем сортировку по id
 		if (sortKey === col) {
 			sortAsc = !sortAsc;
 		} else {
@@ -224,9 +223,8 @@
 	}
 
 	tbody {
-        overflow: scroll;
+		overflow: scroll;
 		background: var(--first-color);
-        
 	}
 
 	.create-button {
@@ -258,20 +256,20 @@
 	}
 
 	@media (max-width: 768px) {
-        .table-wrapper {
-            overflow: scroll;
-        }
+		.table-wrapper {
+			overflow: scroll;
+		}
 		.table-container {
 			min-height: auto;
 			background: none;
 			border: none;
 			border-radius: 0;
-            overflow: scroll;
+			overflow: scroll;
 		}
 
 		table {
-            overflow: scroll;
-            width: 100%;
+			overflow: scroll;
+			width: 100%;
 			border: 0;
 		}
 
@@ -285,7 +283,6 @@
 			flex-direction: column;
 			gap: 1.5rem;
 			background: none;
-            
 		}
 
 		.table-wrapper {

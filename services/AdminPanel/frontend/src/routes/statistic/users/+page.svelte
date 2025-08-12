@@ -466,7 +466,6 @@
 		background-color: var(--first-color);
 		color: var(--main-text);
 		box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-		width: 100%;
 		box-sizing: border-box;
 	}
 	section.control-panel {

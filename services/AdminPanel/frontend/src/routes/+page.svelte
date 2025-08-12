@@ -56,12 +56,6 @@
 		letter-spacing: 0.03em;
 		outline: none;
 	}
-	.main-description {
-		text-align: center;
-		color: var(--gray-text, #9ca3af);
-		font-size: 1.15rem;
-		margin-bottom: 2.5rem;
-	}
 	.main-cards-grid {
 		display: grid;
 		grid-template-columns: repeat(2, 1fr);

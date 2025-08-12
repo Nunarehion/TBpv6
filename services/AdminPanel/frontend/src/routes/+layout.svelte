@@ -61,7 +61,7 @@
 			icon: 'adjustments-vertical',
 			items: [
 				{ text: 'Пользователи', link: '/users', icon: 'desktop-pc' },
-				{ text: 'Иконки', link: '/icones', icon: 'palette' },
+				// { text: 'Иконки', link: '/icones', icon: 'palette' },
 				{ text: 'Картинки', link: '/images', icon: 'image' }
 			]
 		}
@@ -114,7 +114,7 @@
 		background: var(--first-color);
 		height: 100vh;
 		height: 100dvh;
-					
+		width: 100vw;
 	}
 
 	nav {
@@ -126,7 +126,7 @@
 		grid-row: 1 / 2;
 	}
 
-	.window {   
+	.window {
 		display: flex;
 		flex-direction: column;
 		background-color: #1e2630;
@@ -156,7 +156,6 @@
 
 	@media (min-width: 768px) {
 		.wrap {
-
 			grid-template-columns: 300px 1fr;
 		}
 
@@ -177,6 +176,7 @@
 		.window {
 			grid-column: 2 / 3;
 			grid-row: 2 / 3;
+			padding: 1rem;
 		}
 		.hamburger-menu {
 			display: none;
