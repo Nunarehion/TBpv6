@@ -252,13 +252,11 @@
 		<label for="interval">Интервал:</label>
 		<select id="interval" bind:value={interval} on:change={loadAllStatistics}>
 			<option value="minute">По минутам</option>
-			<option value="10_minutes">По 10 минут</option>
-			<option value="half_hour">По полчаса</option>
-			<option value="12_hours">По 12 часов</option>
+			<!-- <option value="10_minutes">По 10 минут</option> -->
+			<!-- <option value="half_hour">По полчаса</option> -->
 			<option value="hour">По часам</option>
+			<option value="12_hours">По 12 часов</option>
 			<option value="day">По дням</option>
-			<option value="week">По неделям</option>
-			<option value="month">По месяцам</option>
 		</select>
 	</div>
 	<div class="chart-container">
@@ -303,7 +301,7 @@
 			/>
 		</div>
 		<div>
-			<label for="statPattern">Паттерн (опционально):</label>
+			<!-- <label for="statPattern">Паттерн (опционально):</label>
 			<input
 				type="text"
 				id="statPattern"
@@ -311,25 +309,26 @@
 				placeholder="Например, query/button_1"
 				on:change={loadAllStatistics}
 			/>
+		</div> -->
+			<button on:click={loadAllStatistics} class="update-button"> Обновить статистику </button>
 		</div>
-		<button on:click={loadAllStatistics} class="update-button"> Обновить статистику </button>
-	</div>
 
-	<div class="summary-content-placeholder">
-		{#if $apiError}
-			<p class="error-message transition-fade">Ошибка: {$apiError}</p>
-		{:else if $loadingClickStatistics || showLoadingMessage}
-			<p class="info-message transition-fade">Загрузка общей статистики...</p>
-		{:else if $clickStatistics && $clickStatistics.count !== undefined}
-			<div class="stats-card transition-fade">
-				<p class="stat-value">{$clickStatistics.count}</p>
-				<p class="stat-label">Количество кликов</p>
-			</div>
-		{:else}
-			<p class="info-message transition-fade">
-				Общая статистика пока не загружена. Выберите даты и нажмите "Обновить статистику".
-			</p>
-		{/if}
+		<div class="summary-content-placeholder">
+			{#if $apiError}
+				<p class="error-message transition-fade">Ошибка: {$apiError}</p>
+			{:else if $loadingClickStatistics || showLoadingMessage}
+				<p class="info-message transition-fade">Загрузка общей статистики...</p>
+			{:else if $clickStatistics && $clickStatistics.count !== undefined}
+				<div class="stats-card transition-fade">
+					<p class="stat-value">{$clickStatistics.count}</p>
+					<p class="stat-label">Количество кликов</p>
+				</div>
+			{:else}
+				<p class="info-message transition-fade">
+					Общая статистика пока не загружена. Выберите даты и нажмите "Обновить статистику".
+				</p>
+			{/if}
+		</div>
 	</div>
 </section>
 <section class="stat-section">

@@ -1,6 +1,6 @@
 FROM node:18-alpine
 
-RUN apk add --no-cache mongodb-tools
+RUN apk add --no-cache coreutils mongodb-tools
 
 WORKDIR /app
 
@@ -15,5 +15,4 @@ ENV ORIGIN=$ORIGIN
 
 EXPOSE 5173
 
-#rjvbn
 CMD ["npm", "run", "dev", "--", "--host"]

@@ -46,13 +46,13 @@
     </div>
 
     <div class="bottom-panel">
-        <a href="/all" class="panel-icon-link" title="Общие настройки" on:click={closeSidebar}>
+        <a href="/all" class="panel-icon-link" title="Все коллекции" on:click={closeSidebar}>
             <svg class="icon"><use href="/sprite.svg#globe"></use></svg>
         </a>
-        <a href="/display-settings" class="panel-icon-link" title="Настройки отображения" on:click={closeSidebar}>
+        <a href="/server" class="panel-icon-link" title="Информация о сервере" on:click={closeSidebar}>
             <svg class="icon"><use href="/sprite.svg#adjustments-vertical"></use></svg>
         </a>
-        <a href="/app-settings" class="panel-icon-link" title="Настройки приложения" on:click={closeSidebar}>
+        <a href="/backup" class="panel-icon-link" title="Восстановление данных" on:click={closeSidebar}>
             <svg class="icon"><use href="/sprite.svg#cog"></use></svg>
         </a>
     </div>
