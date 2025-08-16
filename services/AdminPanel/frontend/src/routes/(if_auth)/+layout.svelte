@@ -26,7 +26,14 @@
 		window.addEventListener('resize', handleResize);
 		return () => window.removeEventListener('resize', handleResize);
 	});
+	import { goto } from '$app/navigation';
 
+	async function handleLogout() {
+		await fetch('/logout', {
+			method: 'POST'
+		});
+		goto('/auth/login');
+	}
 	$: if ($navigating && window.innerWidth < 768) {
 		sidebarOpen = false;
 	}

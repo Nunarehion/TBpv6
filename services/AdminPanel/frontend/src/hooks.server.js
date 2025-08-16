@@ -1,9 +1,11 @@
-import { connectMongoDB } from '$lib/server/mongoService';
+import { connectMongoDB, Admin } from '$lib/server/mongoService';
 import { connectRedis } from '$lib/server/redisService';
 import { sequence } from '@sveltejs/kit/hooks';
 
 let dbInitialized = false;
 let redisInitialized = false;
+
+const ADMIN_SESSION_COOKIE = 'admin_session';
 
 export const handle = sequence(async ({ event, resolve }) => {
     if (!dbInitialized) {
@@ -24,14 +26,15 @@ export const handle = sequence(async ({ event, resolve }) => {
         }
     }
 
+    const sessionCookieValue = event.cookies.get(ADMIN_SESSION_COOKIE);
+    
+    if (sessionCookieValue) {
+        const admin = await Admin.findOne({ username: sessionCookieValue });
+        event.locals.isAdmin = !!admin;
+    } else {
+        event.locals.isAdmin = false;
+    }
+    
     const response = await resolve(event);
     return response;
 });
-
-export function handleError({ error, event }) {
-    console.error(`An unhandled server error occurred on ${event.url.pathname}:`, error);
-    return {
-        message: 'Произошла внутренняя ошибка сервера.',
-        code: error.code ?? 'UNKNOWN_SERVER_ERROR'
-    };
-}

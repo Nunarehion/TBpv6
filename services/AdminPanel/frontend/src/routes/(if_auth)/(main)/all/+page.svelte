@@ -148,6 +148,10 @@
 			Очистить базу данных перед импортом
 		</label>
 	</form>
+	<hr>
+		<nav>
+		<button on:click={handleLogout}>Выйти из аккакунта</button>
+	</nav>
 </div>
 
 {#if $fetchError}

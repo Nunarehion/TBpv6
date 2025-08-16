@@ -1,9 +1,16 @@
 import mongoose from 'mongoose';
 
-// Если "mongodb:27017" не работает, попробуйте "127.0.0.1:27017" или IP-адрес вашего сервера MongoDB.
 const MONGO_URI = 'mongodb://mongodb:27017/tbpv6'; 
 
 let isConnected = false;
+
+// Определение схемы и модели для администратора
+const adminSchema = new mongoose.Schema({
+    username: { type: String, required: true, unique: true },
+    passwordHash: { type: String, required: true }
+});
+
+const Admin = mongoose.models.Admin || mongoose.model('Admin', adminSchema);
 
 export async function connectMongoDB() {
     if (isConnected) {
@@ -26,4 +33,5 @@ export function getMongoCollection(collectionName) {
     return mongoose.connection.db.collection(collectionName);
 }
 
+export { Admin };
 export default mongoose;
