@@ -368,6 +368,8 @@
 	}
 
 	section {
+		display: flex;
+		flex-direction: column;
 		align-self: stretch;
 		margin-bottom: 2.5rem;
 		padding: 2rem;
