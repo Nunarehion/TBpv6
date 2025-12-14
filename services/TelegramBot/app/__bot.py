@@ -1,5 +1,6 @@
 import logging
 import asyncio
+import os
 from aiogram import Bot, Dispatcher
 from aiogram.enums import ParseMode
 from aiogram.client.bot import DefaultBotProperties
@@ -20,18 +21,34 @@ current_bot: Bot = None
 current_dp: Dispatcher = None
 last_bot_token: str = None
 
+# Добавьте этот токен сюда (измените на ваш реальный токен)
+DEFAULT_BOT_TOKEN = "YOUR_BOT_TOKEN_HERE"
+
+async def get_bot_token_safe():
+    """Безопасное получение токена: из базы или из строки"""
+    bot_config = await get_bot_config()
+    
+    if bot_config and bot_config.get("bot_token"):
+        return bot_config["bot_token"]
+    
+    # Если токен не найден в базе, используем значение из строки
+    logger.warning("Токен бота не найден в базе данных, используется значение по умолчанию")
+    return DEFAULT_BOT_TOKEN
+
 async def initialize_and_start_bot():
     global current_bot, current_dp, last_bot_token
 
     await initialize_bot_config_if_not_exists()
 
-    bot_config = await get_bot_config()
+    # ИЗМЕНЕНИЕ ЗДЕСЬ: используем новую функцию для получения токена
+    new_bot_token = await get_bot_token_safe()  # <-- вместо get_bot_config()
 
-    if not bot_config or not bot_config.get("bot_token"):
-        logger.error("Токен бота не найден в конфигурации MongoDB. Запуск невозможен.")
+    if not new_bot_token:
+        logger.error("Токен бота не найден ни в базе, ни в настройках. Запуск невозможен.")
         return False
 
-    new_bot_token = bot_config["bot_token"]
+    # Получаем конфиг для других настроек (логирование, вебхук и т.д.)
+    bot_config = await get_bot_config() or {}
 
     if current_bot and last_bot_token == new_bot_token:
         logger.debug("Токен бота не изменился. Продолжаю работу с текущим ботом.")
