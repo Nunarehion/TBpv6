@@ -15,4 +15,4 @@ ENV ORIGIN=$ORIGIN
 
 EXPOSE 5173
 
-CMD ["npm", "run", "dev", "--", "--host"]
+CMD ["npm", "exec", "--", "vite", "dev", "--host"]
